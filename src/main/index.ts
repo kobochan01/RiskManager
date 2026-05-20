@@ -1,5 +1,7 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { initDb } from './db'
+import { registerIpcHandlers } from './ipc'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -30,7 +32,9 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await initDb()
+  registerIpcHandlers()
   createWindow()
 
   app.on('activate', function () {
