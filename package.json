@@ -1,0 +1,31 @@
+{
+  "name": "risk-manager",
+  "version": "0.1.0",
+  "description": "保育園向けヒヤリハット事案管理アプリ",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "SET ELECTRON_RUN_AS_NODE=0 && electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "postinstall": ""
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/sql.js": "^1.4.9",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.20",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.0.0",
+    "electron-vite": "^2.3.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "sql.js": "^1.12.0"
+  }
+}
