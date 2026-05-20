@@ -25,7 +25,7 @@
 | # | Issue | 内容 | 状態 |
 |---|-------|------|------|
 | 1 | [#1](https://github.com/kobochan01/RiskManager/issues/1) | プロジェクト雛形のセットアップ | ✅ 完了 |
-| 2 | - | DBセットアップ（SQLiteスキーマ） | 未着手 |
+| 2 | [#5](https://github.com/kobochan01/RiskManager/issues/5) | DBセットアップ（SQLiteスキーマ） | ✅ 完了 |
 | 3 | - | 起動パスワード認証 + 変更機能 | 未着手 |
 | 4 | - | ヒヤリハット報告入力 + マスタ管理 | 未着手 |
 | 5 | - | 報告一覧・検索 | 未着手 |
@@ -122,6 +122,31 @@ CREATE TABLE settings (
 | 2026-05-20 | Issue #1: `npm install` | `gyp ERR! Could not find any Python installation` | `better-sqlite3` がC++ネイティブモジュールのためPythonが必要 | `sql.js`（WASMベース）に切り替え |
 | 2026-05-20 | Issue #1: `npm run dev` | `TypeError: Cannot read properties of undefined (reading 'isPackaged')` | `@electron-toolkit/utils` v4 が Electron 34 と非互換 | パッケージ削除、`process.env.NODE_ENV` で代替 |
 | 2026-05-20 | Issue #1: `npm run dev` | `TypeError: Cannot read properties of undefined (reading 'whenReady')` | `npm install` 後に `ELECTRON_RUN_AS_NODE=1` がPowerShellセッションに残留。`electron.exe` がNode.jsモードで動作し `require('electron')` がAPI非返却 | `dev` スクリプトに `SET ELECTRON_RUN_AS_NODE=0 &&` を追加 |
+| 2026-05-20 | Issue #5: `npm run dev` | `TypeError: Cannot read properties of undefined (reading 'whenReady')` | Electron 34 は `ELECTRON_RUN_AS_NODE` の**値**ではなく**存在**で判断。`SET VAR=0` は変数を存在させたままにするためNode.jsモードが継続 | `SET ELECTRON_RUN_AS_NODE=&&`（空値 = 変数を削除）に変更 |
+
+---
+
+## Issue #5 作業記録（2026-05-20）
+
+### やったこと
+
+- `src/main/db.ts` を新規作成（sql.js初期化 + 4テーブルスキーマ定義）
+- `src/main/ipc.ts` を新規作成（IPCハンドラー骨格：クラス / けが種類 / ヒヤリハット / 設定）
+- `src/main/index.ts` を更新（DB初期化とIPCハンドラー登録を追加）
+- `src/renderer/src/env.d.ts` を新規作成（`window.api` 型定義）
+- `package.json` にelectron-builderの設定と `sql-wasm.wasm` 同梱設定を追加
+- `npm run dev` でアプリ起動・DBファイル生成（36864 bytes）を確認
+
+### 詰まった点と解決策
+
+#### `ELECTRON_RUN_AS_NODE` の挙動（Electron 34）
+**原因:** Electron 34 は `ELECTRON_RUN_AS_NODE` の値ではなく**変数が存在するかどうか**でNode.jsモードを判断する。`SET ELECTRON_RUN_AS_NODE=0` は値を変更するだけで変数自体は残るため、Node.jsモードが継続した。  
+**解決:** `SET ELECTRON_RUN_AS_NODE=&&`（等号の直後に `&&`）にして変数を削除する。  
+`SET VAR=0` → 変数あり（Node.jsモード）  
+`SET VAR=&&` → 変数なし（アプリモード）  
+```json
+"dev": "SET ELECTRON_RUN_AS_NODE=&& electron-vite dev"
+```
 
 ---
 
@@ -130,3 +155,4 @@ CREATE TABLE settings (
 | ブランチ | PR | 内容 | 状態 |
 |----------|----|------|------|
 | `chore/1-project-setup` | [#2](https://github.com/kobochan01/RiskManager/pull/2) | プロジェクト雛形 | ✅ マージ済み |
+| `feature/5-db-setup` | - | DBセットアップ（SQLiteスキーマ） | 作業中 |
