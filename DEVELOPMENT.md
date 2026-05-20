@@ -26,7 +26,7 @@
 |---|-------|------|------|
 | 1 | [#1](https://github.com/kobochan01/RiskManager/issues/1) | プロジェクト雛形のセットアップ | ✅ 完了 |
 | 2 | [#5](https://github.com/kobochan01/RiskManager/issues/5) | DBセットアップ（SQLiteスキーマ） | ✅ 完了 |
-| 3 | - | 起動パスワード認証 + 変更機能 | 未着手 |
+| 3 | [#7](https://github.com/kobochan01/RiskManager/issues/7) | 起動パスワード認証 + 変更機能 | ✅ 完了 |
 | 4 | - | ヒヤリハット報告入力 + マスタ管理 | 未着手 |
 | 5 | - | 報告一覧・検索 | 未着手 |
 | 6 | - | 集計ダッシュボード + PDFレポート | 未着手 |
@@ -150,9 +150,29 @@ CREATE TABLE settings (
 
 ---
 
+## Issue #7 作業記録（2026-05-20）
+
+### やったこと
+
+- `src/main/auth.ts` を新規作成（`crypto.scryptSync` でパスワードをハッシュ化・検証）
+- `src/main/ipc.ts` に3つのIPCハンドラーを追加（`auth:has-password` / `auth:verify` / `auth:set-password`）
+- `src/renderer/src/components/LoginPage.tsx` を新規作成（初回パスワード設定 / ログインを切り替え）
+- `src/renderer/src/components/ChangePasswordDialog.tsx` を新規作成（現パスワード確認 → 新パスワード設定）
+- `src/renderer/src/App.tsx` を更新（`loading → locked → unlocked` の認証フローを管理）
+- `npm run dev` で動作確認：初回起動時に「パスワードを設定してください」画面が正常に表示されることを確認
+
+### 技術的な決定事項
+
+- **ハッシュアルゴリズム**: `crypto.scryptSync`（Node.js標準。外部依存なし、パスワード専用の強いKDF）
+- **ハッシュ保存形式**: `<16バイトsalt hex>:<32バイトhash hex>`（`settings` テーブルの `password_hash` キー）
+- **タイミング攻撃対策**: `crypto.timingSafeEqual` で比較
+
+---
+
 ## ブランチ・PR 履歴
 
 | ブランチ | PR | 内容 | 状態 |
 |----------|----|------|------|
 | `chore/1-project-setup` | [#2](https://github.com/kobochan01/RiskManager/pull/2) | プロジェクト雛形 | ✅ マージ済み |
-| `feature/5-db-setup` | - | DBセットアップ（SQLiteスキーマ） | 作業中 |
+| `feature/5-db-setup` | [#6](https://github.com/kobochan01/RiskManager/pull/6) | DBセットアップ（SQLiteスキーマ） | ✅ マージ済み |
+| `feature/7-password-auth` | - | 起動パスワード認証 + 変更機能 | 作業中 |
