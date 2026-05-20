@@ -113,6 +113,18 @@ CREATE TABLE settings (
 
 ---
 
+## エラーログ
+
+エラーが発生した作業は以下に記録する。
+
+| 日付 | 作業 | エラー内容 | 原因 | 解決策 |
+|------|------|-----------|------|--------|
+| 2026-05-20 | Issue #1: `npm install` | `gyp ERR! Could not find any Python installation` | `better-sqlite3` がC++ネイティブモジュールのためPythonが必要 | `sql.js`（WASMベース）に切り替え |
+| 2026-05-20 | Issue #1: `npm run dev` | `TypeError: Cannot read properties of undefined (reading 'isPackaged')` | `@electron-toolkit/utils` v4 が Electron 34 と非互換 | パッケージ削除、`process.env.NODE_ENV` で代替 |
+| 2026-05-20 | Issue #1: `npm run dev` | `TypeError: Cannot read properties of undefined (reading 'whenReady')` | `npm install` 後に `ELECTRON_RUN_AS_NODE=1` がPowerShellセッションに残留。`electron.exe` がNode.jsモードで動作し `require('electron')` がAPI非返却 | `dev` スクリプトに `SET ELECTRON_RUN_AS_NODE=0 &&` を追加 |
+
+---
+
 ## ブランチ・PR 履歴
 
 | ブランチ | PR | 内容 | 状態 |
