@@ -50,6 +50,17 @@ export default function IncidentForm(): JSX.Element {
     }
   }
 
+  function handleClear(): void {
+    setOccurredAt('')
+    setLocationId(0)
+    setClassId(0)
+    setChildName('')
+    setInjuryTypeId(0)
+    setDescription('')
+    setSubmitMessage('')
+    setSubmitError('')
+  }
+
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setSubmitMessage('')
@@ -69,12 +80,7 @@ export default function IncidentForm(): JSX.Element {
         injury_type_id: injuryTypeId,
         description
       })
-      setOccurredAt('')
-      setLocationId(0)
-      setClassId(0)
-      setChildName('')
-      setInjuryTypeId(0)
-      setDescription('')
+      handleClear()
       setSubmitMessage('報告を登録しました')
     } catch {
       setSubmitError('登録に失敗しました')
@@ -186,12 +192,21 @@ export default function IncidentForm(): JSX.Element {
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
         {submitMessage && <p className="text-sm text-green-600">{submitMessage}</p>}
 
-        <button
-          type="submit"
-          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded"
-        >
-          報告を登録する
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleClear}
+            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded border border-gray-300"
+          >
+            入力をクリア
+          </button>
+          <button
+            type="submit"
+            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded"
+          >
+            報告を登録する
+          </button>
+        </div>
       </form>
     </div>
   )
