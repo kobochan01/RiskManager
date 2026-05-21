@@ -28,8 +28,9 @@
 | 2 | [#5](https://github.com/kobochan01/RiskManager/issues/5) | DBセットアップ（SQLiteスキーマ） | ✅ 完了 |
 | 3 | [#7](https://github.com/kobochan01/RiskManager/issues/7) | 起動パスワード認証 + 変更機能 | ✅ 完了 |
 | 4 | [#9](https://github.com/kobochan01/RiskManager/issues/9) | ヒヤリハット報告入力 + マスタ管理（クラス・けがの種類・場所） | ✅ 完了 |
-| 5 | [#11](https://github.com/kobochan01/RiskManager/issues/11) | 報告一覧・絞り込み検索 | 作業中 |
-| 6 | - | 集計ダッシュボード + PDFレポート | 未着手 |
+| 5 | [#11](https://github.com/kobochan01/RiskManager/issues/11) | 報告一覧・絞り込み検索 | ✅ 完了 |
+| 6 | [#13](https://github.com/kobochan01/RiskManager/issues/13) | 集計ダッシュボード（時間帯別・けが種類別・場所別） | 作業中 |
+| 7 | - | PDFレポート出力 | 未着手 |
 
 ---
 
@@ -177,7 +178,8 @@ CREATE TABLE settings (
 | `feature/5-db-setup` | [#6](https://github.com/kobochan01/RiskManager/pull/6) | DBセットアップ（SQLiteスキーマ） | ✅ マージ済み |
 | `feature/7-password-auth` | [#8](https://github.com/kobochan01/RiskManager/pull/8) | 起動パスワード認証 + 変更機能 | ✅ マージ済み |
 | `feature/9-incident-form-and-master` | [#10](https://github.com/kobochan01/RiskManager/pull/10) | ヒヤリハット報告入力 + マスタ管理 | ✅ マージ済み |
-| `feature/11-incident-list` | - | 報告一覧・絞り込み検索 | 作業中 |
+| `feature/11-incident-list` | [#12](https://github.com/kobochan01/RiskManager/pull/12) | 報告一覧・絞り込み検索 | ✅ マージ済み |
+| `feature/13-dashboard` | - | 集計ダッシュボード | 作業中 |
 
 ---
 
@@ -214,3 +216,22 @@ CREATE TABLE settings (
 - **フィルタリング**: フロントエンドのみで完結（全件取得後にクライアント側でフィルタ）。報告件数が数千件程度の想定なので DB クエリ分割は不要
 - **詳細展開**: 行クリックでトグル。`React.Fragment key={id}` を使って行ペアを1単位として管理
 - **`db:get-incidents` IPC**: JOIN で `location_name / class_name / injury_type_name` を結合して返すため、フロント側でマスタ ID→名称変換が不要
+
+---
+
+## Issue #13 作業記録（2026-05-21）
+
+### やったこと
+
+- `recharts` 3.8.1 を追加（グラフ描画ライブラリ）
+- `src/main/ipc.ts` に `db:get-stats` IPCハンドラーを追加（時間帯別・けが種類別・場所別の集計クエリ）
+- `src/renderer/src/components/DashboardPage.tsx` を新規作成（3グラフ + 期間フィルタ）
+- `src/renderer/src/App.tsx` を4タブ構成に更新（ダッシュボードタブを追加）
+- `src/main/db.ts` の `getWasmPath` を修正（preview モードで WASM ファイルが見つからないバグを修正）
+
+### 技術的な決定事項
+
+- **グラフライブラリ**: `recharts`（React ネイティブ、依存関係なし、TypeScript 型付き）
+- **時間帯集計**: SQLite の `strftime` で時・分を抽出し、`CAST(...) / 15 * 15` で15分刻みにバケット化。`slot_index = hour * 4 + minute / 15` の整数で GROUP BY し、フロント側で時刻文字列に変換
+- **期間フィルタ**: 今月・今四半期・今年・カスタムの4種。日付計算はフロントエンドで実施し、`dateFrom / dateTo` として IPC に渡す
+- **WASM パスの修正**: 本番パッケージ（electron-builder）では `process.resourcesPath`、開発時は `node_modules/sql.js/dist/`、preview モードでは `existsSync` でフォールバック

@@ -113,6 +113,67 @@ export function registerIpcHandlers(): void {
     persistDb()
   })
 
+  // ---- 集計 ----
+  ipcMain.handle('db:get-stats', (_e, payload: { dateFrom: string; dateTo: string }) => {
+    const db = getDb()
+    const { dateFrom, dateTo } = payload
+
+    const timeRows = db.exec(`
+      SELECT
+        CAST(strftime('%H', occurred_at) AS INTEGER) * 4 +
+        CAST(strftime('%M', occurred_at) AS INTEGER) / 15 AS slot_index,
+        COUNT(*) AS count
+      FROM incidents
+      WHERE date(occurred_at) >= ? AND date(occurred_at) <= ?
+      GROUP BY slot_index
+      ORDER BY slot_index
+    `, [dateFrom, dateTo])
+
+    const injuryRows = db.exec(`
+      SELECT it.name, COUNT(*) AS count
+      FROM incidents i
+      JOIN injury_types it ON it.id = i.injury_type_id
+      WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      GROUP BY it.id
+      ORDER BY count DESC
+    `, [dateFrom, dateTo])
+
+    const locationRows = db.exec(`
+      SELECT l.name, COUNT(*) AS count
+      FROM incidents i
+      JOIN locations l ON l.id = i.location_id
+      WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      GROUP BY l.id
+      ORDER BY count DESC
+    `, [dateFrom, dateTo])
+
+    const totalRows = db.exec(`
+      SELECT COUNT(*) FROM incidents
+      WHERE date(occurred_at) >= ? AND date(occurred_at) <= ?
+    `, [dateFrom, dateTo])
+
+    return {
+      timeSlots: (timeRows[0]?.values ?? []).map(([slotIndex, count]) => {
+        const idx = Number(slotIndex)
+        const h = Math.floor(idx / 4)
+        const m = (idx % 4) * 15
+        return {
+          slot: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+          count: Number(count)
+        }
+      }),
+      injuryTypes: (injuryRows[0]?.values ?? []).map(([name, count]) => ({
+        name: String(name),
+        count: Number(count)
+      })),
+      locations: (locationRows[0]?.values ?? []).map(([name, count]) => ({
+        name: String(name),
+        count: Number(count)
+      })),
+      total: Number(totalRows[0]?.values[0]?.[0] ?? 0)
+    }
+  })
+
   // ---- 設定 ----
   ipcMain.handle('db:get-setting', (_e, key: string) => {
     const rows = getDb().exec('SELECT value FROM settings WHERE key = ?', [key])

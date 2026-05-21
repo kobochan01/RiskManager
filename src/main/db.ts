@@ -12,7 +12,11 @@ function getWasmPath(file: string): string {
   if (isDev) {
     return join(process.cwd(), 'node_modules/sql.js/dist', file)
   }
-  return join(process.resourcesPath, file)
+  // パッケージ済みアプリ: electron-builder が resources/ に配置
+  // preview モード: node_modules にフォールバック
+  const productionPath = join(process.resourcesPath, file)
+  if (existsSync(productionPath)) return productionPath
+  return join(process.cwd(), 'node_modules/sql.js/dist', file)
 }
 
 function getDbPath(): string {
