@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { LoginPage } from './components/LoginPage'
 import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import IncidentForm from './components/IncidentForm'
+import IncidentList from './components/IncidentList'
 import MasterPage from './components/MasterPage'
 
 type AuthState = 'loading' | 'locked' | 'unlocked'
-type MainTab = 'form' | 'master'
+type MainTab = 'form' | 'list' | 'master'
 
 function App(): JSX.Element {
   const [authState, setAuthState] = useState<AuthState>('loading')
@@ -53,7 +54,7 @@ function App(): JSX.Element {
       {/* メインタブ */}
       <div className="bg-white border-b border-gray-200 px-6">
         <div className="flex gap-1">
-          {([['form', '報告入力'], ['master', 'マスタ管理']] as [MainTab, string][]).map(([key, label]) => (
+          {([['form', '報告入力'], ['list', '報告一覧'], ['master', 'マスタ管理']] as [MainTab, string][]).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setMainTab(key)}
@@ -70,7 +71,7 @@ function App(): JSX.Element {
       </div>
 
       <main className="flex-1 overflow-y-auto">
-        {mainTab === 'form' ? <IncidentForm /> : <MasterPage />}
+        {mainTab === 'form' ? <IncidentForm /> : mainTab === 'list' ? <IncidentList /> : <MasterPage />}
       </main>
 
       {showChangePw && (

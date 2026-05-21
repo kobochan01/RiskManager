@@ -27,8 +27,8 @@
 | 1 | [#1](https://github.com/kobochan01/RiskManager/issues/1) | プロジェクト雛形のセットアップ | ✅ 完了 |
 | 2 | [#5](https://github.com/kobochan01/RiskManager/issues/5) | DBセットアップ（SQLiteスキーマ） | ✅ 完了 |
 | 3 | [#7](https://github.com/kobochan01/RiskManager/issues/7) | 起動パスワード認証 + 変更機能 | ✅ 完了 |
-| 4 | [#9](https://github.com/kobochan01/RiskManager/issues/9) | ヒヤリハット報告入力 + マスタ管理（クラス・けがの種類・場所） | 作業中 |
-| 5 | - | 報告一覧・検索 | 未着手 |
+| 4 | [#9](https://github.com/kobochan01/RiskManager/issues/9) | ヒヤリハット報告入力 + マスタ管理（クラス・けがの種類・場所） | ✅ 完了 |
+| 5 | [#11](https://github.com/kobochan01/RiskManager/issues/11) | 報告一覧・絞り込み検索 | 作業中 |
 | 6 | - | 集計ダッシュボード + PDFレポート | 未着手 |
 
 ---
@@ -176,7 +176,8 @@ CREATE TABLE settings (
 | `chore/1-project-setup` | [#2](https://github.com/kobochan01/RiskManager/pull/2) | プロジェクト雛形 | ✅ マージ済み |
 | `feature/5-db-setup` | [#6](https://github.com/kobochan01/RiskManager/pull/6) | DBセットアップ（SQLiteスキーマ） | ✅ マージ済み |
 | `feature/7-password-auth` | [#8](https://github.com/kobochan01/RiskManager/pull/8) | 起動パスワード認証 + 変更機能 | ✅ マージ済み |
-| `feature/9-incident-form-and-master` | - | ヒヤリハット報告入力 + マスタ管理 | 作業中 |
+| `feature/9-incident-form-and-master` | [#10](https://github.com/kobochan01/RiskManager/pull/10) | ヒヤリハット報告入力 + マスタ管理 | ✅ マージ済み |
+| `feature/11-incident-list` | - | 報告一覧・絞り込み検索 | 作業中 |
 
 ---
 
@@ -196,3 +197,20 @@ CREATE TABLE settings (
 - **場所フィールドのUX**: セレクトボックス（登録済み場所）+ テキスト入力 + 追加ボタンのインライン方式。追加後は自動的にセレクトで選択済み状態になる
 - **スキーマ変更**: `location TEXT` → `location_id INTEGER FK`（クラス・けがの種類と同じ正規化パターンに統一）
 - **マイグレーション**: `PRAGMA table_info` で既存カラムを確認し、必要な場合のみ `ALTER TABLE` + データ移行を実行
+
+---
+
+## Issue #11 作業記録（2026-05-21）
+
+### やったこと
+
+- `src/renderer/src/components/IncidentList.tsx` を新規作成（報告一覧・絞り込みフィルタ・詳細展開）
+- `src/renderer/src/App.tsx` に「報告一覧」タブを追加（3タブ構成に更新）
+- `docs/requirements.md` を新規作成（要件定義書）
+- `README.md` を更新（機能一覧をフェーズ別表形式に整理、要件定義書リンクを追加）
+
+### 技術的な決定事項
+
+- **フィルタリング**: フロントエンドのみで完結（全件取得後にクライアント側でフィルタ）。報告件数が数千件程度の想定なので DB クエリ分割は不要
+- **詳細展開**: 行クリックでトグル。`React.Fragment key={id}` を使って行ペアを1単位として管理
+- **`db:get-incidents` IPC**: JOIN で `location_name / class_name / injury_type_name` を結合して返すため、フロント側でマスタ ID→名称変換が不要
