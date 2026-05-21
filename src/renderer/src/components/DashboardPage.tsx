@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import { buildPdfFileName } from '../utils/pdfExport'
 
-type Period = 'month' | 'quarter' | 'year' | 'custom'
+type Period = 'month' | 'quarter' | 'year'
 
 type Stats = {
   timeSlots: { slot: string; count: number }[]
@@ -16,55 +16,86 @@ type Stats = {
 
 const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
-function toDateString(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
+const QUARTER_RANGES = [
+  { startMonth: 4,  endMonth: 6,  yearOffset: 0 },
+  { startMonth: 7,  endMonth: 9,  yearOffset: 0 },
+  { startMonth: 10, endMonth: 12, yearOffset: 0 },
+  { startMonth: 1,  endMonth: 3,  yearOffset: 1 },
+]
 
-function getPeriodRange(period: Period, customFrom: string, customTo: string): { from: string; to: string } {
-  const today = new Date()
-  if (period === 'custom') {
-    return { from: customFrom, to: customTo }
-  }
+const QUARTER_LABELS = [
+  '第1四半期（4〜6月）',
+  '第2四半期（7〜9月）',
+  '第3四半期（10〜12月）',
+  '第4四半期（1〜3月）',
+]
+
+function getPeriodRange(
+  period: Period,
+  year: number,
+  month: number,
+  quarter: number
+): { from: string; to: string } {
   if (period === 'month') {
-    return {
-      from: toDateString(new Date(today.getFullYear(), today.getMonth(), 1)),
-      to: toDateString(today)
-    }
+    const lastDay = new Date(year, month, 0).getDate()
+    const m = String(month).padStart(2, '0')
+    return { from: `${year}-${m}-01`, to: `${year}-${m}-${lastDay}` }
   }
   if (period === 'quarter') {
-    const q = Math.floor(today.getMonth() / 3)
+    const { startMonth, endMonth, yearOffset } = QUARTER_RANGES[quarter - 1]
+    const qYear = year + yearOffset
+    const lastDay = new Date(qYear, endMonth, 0).getDate()
     return {
-      from: toDateString(new Date(today.getFullYear(), q * 3, 1)),
-      to: toDateString(today)
+      from: `${qYear}-${String(startMonth).padStart(2, '0')}-01`,
+      to:   `${qYear}-${String(endMonth).padStart(2, '0')}-${lastDay}`,
     }
   }
-  // year
   return {
-    from: toDateString(new Date(today.getFullYear(), 0, 1)),
-    to: toDateString(today)
+    from: `${year}-04-01`,
+    to:   `${year + 1}-03-31`,
   }
 }
+
+function buildPeriodLabel(period: Period, year: number, month: number, quarter: number): string {
+  const { from, to } = getPeriodRange(period, year, month, quarter)
+  if (period === 'month') return `${year}年${month}月（${from} 〜 ${to}）`
+  if (period === 'quarter') return `${year}年度 ${QUARTER_LABELS[quarter - 1]}（${from} 〜 ${to}）`
+  return `${year}年度（${from} 〜 ${to}）`
+}
+
+const today = new Date()
+const thisCalYear = today.getFullYear()
+const thisMonth = today.getMonth() + 1
+const thisFiscalYear = thisMonth >= 4 ? thisCalYear : thisCalYear - 1
+const thisQuarter = thisMonth >= 4 && thisMonth <= 6 ? 1
+                  : thisMonth >= 7 && thisMonth <= 9 ? 2
+                  : thisMonth >= 10 ? 3 : 4
 
 export default function DashboardPage(): JSX.Element {
   const [period, setPeriod] = useState<Period>('month')
-  const [customFrom, setCustomFrom] = useState('')
-  const [customTo, setCustomTo] = useState(() => toDateString(new Date()))
+  const [selectedYear, setSelectedYear] = useState(thisCalYear)
+  const [selectedMonth, setSelectedMonth] = useState(thisMonth)
+  const [selectedQuarter, setSelectedQuarter] = useState(thisQuarter)
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    const { from, to } = getPeriodRange(period, customFrom, customTo)
-    if (!from || !to) return
+    const { from, to } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
     setLoading(true)
     window.api.invoke('db:get-stats', { dateFrom: from, dateTo: to }).then((result) => {
       setStats(result as Stats)
       setLoading(false)
     })
-  }, [period, customFrom, customTo])
+  }, [period, selectedYear, selectedMonth, selectedQuarter])
 
-  const { from, to } = getPeriodRange(period, customFrom, customTo)
-  const periodLabel = from && to ? `${from} 〜 ${to}` : ''
+  const { from } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
+  const periodLabel = buildPeriodLabel(period, selectedYear, selectedMonth, selectedQuarter)
+
+  const yearLabel = period === 'month' ? '年' : '年度'
+  const yearRange = period === 'month'
+    ? Array.from({ length: 5 }, (_, i) => thisCalYear - 4 + i)
+    : Array.from({ length: 5 }, (_, i) => thisFiscalYear - 4 + i)
 
   async function handleExportPdf(): Promise<void> {
     setExporting(true)
@@ -82,14 +113,15 @@ export default function DashboardPage(): JSX.Element {
       {/* 印刷用ヘッダー（画面では非表示） */}
       <div className="hidden print:block mb-2">
         <h1 className="text-xl font-bold text-gray-800">ヒヤリハット集計レポート</h1>
-        {periodLabel && <p className="text-sm text-gray-600 mt-1">集計期間：{periodLabel}</p>}
+        <p className="text-sm text-gray-600 mt-1">集計期間：{periodLabel}</p>
       </div>
 
       {/* 期間フィルタ（印刷時は非表示） */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 print:hidden">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 print:hidden space-y-3">
+        {/* 期間種別ボタン */}
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-sm font-medium text-gray-600 mr-2">集計期間：</span>
-          {(['month', 'quarter', 'year', 'custom'] as Period[]).map((p) => (
+          {(['month', 'quarter', 'year'] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -99,30 +131,60 @@ export default function DashboardPage(): JSX.Element {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {p === 'month' ? '今月' : p === 'quarter' ? '今四半期' : p === 'year' ? '今年' : 'カスタム'}
+              {p === 'month' ? '月別' : p === 'quarter' ? '四半期' : '年別'}
             </button>
           ))}
-          {period === 'custom' && (
-            <div className="flex items-center gap-2 ml-2">
-              <input
-                type="date"
-                value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
+        </div>
+
+        {/* 年・月・四半期セレクタ */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-gray-600">{yearLabel}：</span>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="border border-gray-300 rounded px-2 py-1 text-sm"
+            >
+              {yearRange.map((y) => (
+                <option key={y} value={y}>
+                  {period === 'month' ? `${y}年` : `${y}年度`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {period === 'month' && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-600">月：</span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 className="border border-gray-300 rounded px-2 py-1 text-sm"
-              />
-              <span className="text-gray-400 text-sm">〜</span>
-              <input
-                type="date"
-                value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>{m}月</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {period === 'quarter' && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-600">四半期：</span>
+              <select
+                value={selectedQuarter}
+                onChange={(e) => setSelectedQuarter(Number(e.target.value))}
                 className="border border-gray-300 rounded px-2 py-1 text-sm"
-              />
+              >
+                {QUARTER_LABELS.map((label, i) => (
+                  <option key={i + 1} value={i + 1}>{label}</option>
+                ))}
+              </select>
             </div>
           )}
         </div>
-        {periodLabel && (
-          <p className="mt-2 text-xs text-gray-400">{periodLabel}</p>
-        )}
+
+        <p className="text-xs text-gray-400">{periodLabel}</p>
       </div>
 
       {loading && (
