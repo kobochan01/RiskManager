@@ -58,17 +58,35 @@ export function registerIpcHandlers(): void {
     persistDb()
   })
 
+  // ---- 場所マスタ ----
+  ipcMain.handle('db:get-locations', () => {
+    const rows = getDb().exec('SELECT id, name FROM locations ORDER BY id')
+    return rows[0]?.values ?? []
+  })
+
+  ipcMain.handle('db:add-location', (_e, name: string) => {
+    getDb().run('INSERT INTO locations (name) VALUES (?)', [name])
+    persistDb()
+  })
+
+  ipcMain.handle('db:delete-location', (_e, id: number) => {
+    getDb().run('DELETE FROM locations WHERE id = ?', [id])
+    persistDb()
+  })
+
   // ---- ヒヤリハット報告 ----
   ipcMain.handle('db:get-incidents', () => {
     const rows = getDb().exec(`
       SELECT
-        i.id, i.occurred_at, i.location,
+        i.id, i.occurred_at,
+        l.name AS location_name,
         c.name AS class_name,
         i.child_name,
         it.name AS injury_type_name,
         i.description, i.created_at
       FROM incidents i
-      JOIN classes      c  ON c.id  = i.class_id
+      JOIN locations   l  ON l.id  = i.location_id
+      JOIN classes     c  ON c.id  = i.class_id
       JOIN injury_types it ON it.id = i.injury_type_id
       ORDER BY i.occurred_at DESC
     `)
@@ -77,7 +95,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('db:add-incident', (_e, payload: {
     occurred_at: string
-    location: string
+    location_id: number
     class_id: number
     child_name: string
     injury_type_id: number
@@ -85,10 +103,10 @@ export function registerIpcHandlers(): void {
   }) => {
     getDb().run(
       `INSERT INTO incidents
-        (occurred_at, location, class_id, child_name, injury_type_id, description)
+        (occurred_at, location_id, class_id, child_name, injury_type_id, description)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        payload.occurred_at, payload.location, payload.class_id,
+        payload.occurred_at, payload.location_id, payload.class_id,
         payload.child_name, payload.injury_type_id, payload.description
       ]
     )

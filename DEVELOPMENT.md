@@ -27,7 +27,7 @@
 | 1 | [#1](https://github.com/kobochan01/RiskManager/issues/1) | プロジェクト雛形のセットアップ | ✅ 完了 |
 | 2 | [#5](https://github.com/kobochan01/RiskManager/issues/5) | DBセットアップ（SQLiteスキーマ） | ✅ 完了 |
 | 3 | [#7](https://github.com/kobochan01/RiskManager/issues/7) | 起動パスワード認証 + 変更機能 | ✅ 完了 |
-| 4 | - | ヒヤリハット報告入力 + マスタ管理 | 未着手 |
+| 4 | [#9](https://github.com/kobochan01/RiskManager/issues/9) | ヒヤリハット報告入力 + マスタ管理（クラス・けがの種類・場所） | 作業中 |
 | 5 | - | 報告一覧・検索 | 未着手 |
 | 6 | - | 集計ダッシュボード + PDFレポート | 未着手 |
 
@@ -175,4 +175,24 @@ CREATE TABLE settings (
 |----------|----|------|------|
 | `chore/1-project-setup` | [#2](https://github.com/kobochan01/RiskManager/pull/2) | プロジェクト雛形 | ✅ マージ済み |
 | `feature/5-db-setup` | [#6](https://github.com/kobochan01/RiskManager/pull/6) | DBセットアップ（SQLiteスキーマ） | ✅ マージ済み |
-| `feature/7-password-auth` | - | 起動パスワード認証 + 変更機能 | 作業中 |
+| `feature/7-password-auth` | [#8](https://github.com/kobochan01/RiskManager/pull/8) | 起動パスワード認証 + 変更機能 | ✅ マージ済み |
+| `feature/9-incident-form-and-master` | - | ヒヤリハット報告入力 + マスタ管理 | 作業中 |
+
+---
+
+## Issue #9 作業記録（2026-05-21）
+
+### やったこと
+
+- `src/main/db.ts` に `locations` テーブルを追加し、`incidents.location TEXT` → `incidents.location_id INTEGER FK` に変更
+- `initDb()` にマイグレーション処理を追加（既存DBの `location` カラムを `locations` テーブルに移行）
+- `src/main/ipc.ts` に場所マスタ3ハンドラー（get/add/delete）を追加、incident ハンドラーを location_id 対応に更新
+- `src/renderer/src/components/IncidentForm.tsx` を新規作成（報告入力フォーム、場所インライン追加機能付き）
+- `src/renderer/src/components/MasterPage.tsx` を新規作成（クラス・けがの種類・場所の3タブ管理）
+- `src/renderer/src/App.tsx` を「報告入力 | マスタ管理」2タブ構成に更新
+
+### 技術的な決定事項
+
+- **場所フィールドのUX**: セレクトボックス（登録済み場所）+ テキスト入力 + 追加ボタンのインライン方式。追加後は自動的にセレクトで選択済み状態になる
+- **スキーマ変更**: `location TEXT` → `location_id INTEGER FK`（クラス・けがの種類と同じ正規化パターンに統一）
+- **マイグレーション**: `PRAGMA table_info` で既存カラムを確認し、必要な場合のみ `ALTER TABLE` + データ移行を実行
