@@ -52,102 +52,18 @@
 
 ## 3. 機能要件
 
-### 3.1 認証機能
+詳細は [機能要件詳細](functional-requirements.md) を参照。
 
-**対象フェーズ**: Phase 1
+### 機能一覧
 
-| # | 要件 | 詳細 |
-|---|------|------|
-| AUTH-1 | 初回パスワード設定 | アプリ初回起動時、パスワード未設定の場合は設定画面を表示する |
-| AUTH-2 | パスワード強度 | パスワードは4文字以上を必須とする |
-| AUTH-3 | パスワード確認 | 初回設定時は確認入力（2回）を要求する |
-| AUTH-4 | ログイン | 2回目以降の起動ではパスワード入力画面を表示し、一致した場合のみアプリを起動する |
-| AUTH-5 | パスワード変更 | ログイン後、ヘッダーのボタンからパスワード変更ダイアログを開ける |
-| AUTH-6 | パスワード変更手順 | 現パスワードを確認後、新パスワード（確認入力付き）を設定する |
-| AUTH-7 | セキュリティ | パスワードは `crypto.scryptSync`（salt + hash）でハッシュ化して保存する。平文保存は禁止 |
-| AUTH-8 | タイミング攻撃対策 | パスワード比較は `crypto.timingSafeEqual` を使用する |
-
----
-
-### 3.2 ヒヤリハット報告入力
-
-**対象フェーズ**: Phase 1
-
-#### 入力フィールド（全項目必須）
-
-| フィールド | 入力形式 | 制約・備考 |
-|-----------|---------|----------|
-| 発生日時 | datetime-local（日付 + 時刻） | 未来日時は入力可（訂正入力のため） |
-| 場所 | セレクトボックス + インライン追加 | 場所マスタから選択。未登録の場所はその場で追加して自動選択 |
-| クラス | セレクトボックス | クラスマスタから選択 |
-| 園児名 | テキスト入力 | 自由入力（フリーワード） |
-| けがの種類 | セレクトボックス | けがの種類マスタから選択 |
-| 事故内容 | テキストエリア | 自由記述（文字数制限なし） |
-
-#### 動作仕様
-
-| # | 要件 |
-|---|------|
-| FORM-1 | 未入力項目がある場合、送信ボタン押下時にエラーメッセージを表示して送信を中止する |
-| FORM-2 | 送信成功後、フォームを初期状態にクリアする |
-| FORM-3 | 送信成功・失敗をそれぞれメッセージで通知する |
-| FORM-4 | 場所フィールドで新規テキストを入力 → 追加ボタン押下で場所マスタに追加し、セレクトで自動選択する |
-
----
-
-### 3.3 報告一覧・絞り込み検索
-
-**対象フェーズ**: Phase 1
-
-| # | 要件 | 詳細 |
-|---|------|------|
-| LIST-1 | 一覧表示 | 登録済みのインシデントを一覧表示する（発生日時の降順） |
-| LIST-2 | 表示項目 | 発生日時 / 場所 / クラス / 園児名 / けがの種類 / 事故内容（一部省略） |
-| LIST-3 | 絞り込み | クラス・けがの種類・場所・日付範囲でフィルタリングできる |
-| LIST-4 | 詳細表示 | 各行を選択または展開して事故内容の全文を確認できる |
-| LIST-5 | 削除 | 各行から削除できる。削除前に確認ダイアログを表示する |
-
----
-
-### 3.4 マスタ管理
-
-**対象フェーズ**: Phase 1
-
-管理対象マスタ：**クラス** / **けがの種類** / **場所**
-
-| # | 要件 | 詳細 |
-|---|------|------|
-| MASTER-1 | 一覧表示 | 各マスタの登録済みデータを一覧で表示する |
-| MASTER-2 | 新規追加 | テキスト入力 + Enterキーまたはボタンでデータを追加する |
-| MASTER-3 | 削除 | 各行の×ボタンで削除する |
-| MASTER-4 | 重複チェック | 同一名称のデータは登録できない。登録済みの場合はエラーメッセージを表示する |
-| MASTER-5 | 参照整合性 | インシデントで使用中のマスタデータは削除できない（DB制約で保護） |
-
----
-
-### 3.5 集計ダッシュボード
-
-**対象フェーズ**: Phase 2
-
-| # | 要件 | 詳細 |
-|---|------|------|
-| DASH-1 | 時間帯別集計 | 発生時刻を15分刻みで集計し、棒グラフまたは折れ線グラフで表示する |
-| DASH-2 | けがの種類別集計 | けがの種類ごとの件数を円グラフまたは棒グラフで表示する |
-| DASH-3 | 場所別集計 | 場所ごとの件数を棒グラフで表示する |
-| DASH-4 | 期間フィルタ | 集計対象期間を月・四半期・年・カスタム範囲で指定できる |
-
----
-
-### 3.6 PDFレポート出力
-
-**対象フェーズ**: Phase 2
-
-| # | 要件 | 詳細 |
-|---|------|------|
-| PDF-1 | 出力トリガー | ダッシュボード画面から「PDFとして出力」ボタンで実行する |
-| PDF-2 | 出力内容 | 集計対象期間・グラフ・件数サマリーを含む |
-| PDF-3 | ファイル名 | `report_YYYYMM.pdf` 形式（期間に応じて自動生成） |
-| PDF-4 | 保存先 | ファイルダイアログでユーザーが保存先を選択する |
+| 機能 | フェーズ | 要件ID |
+|------|---------|--------|
+| 認証（ログイン・パスワード変更） | Phase 1 | AUTH-1〜8 |
+| ヒヤリハット報告入力 | Phase 1 | FORM-1〜4 |
+| 報告一覧・絞り込み検索 | Phase 1 | LIST-1〜5 |
+| マスタ管理（クラス・けが種類・場所） | Phase 1 | MASTER-1〜5 |
+| 集計ダッシュボード | Phase 2 | DASH-1〜4 |
+| PDFレポート出力 | Phase 2 | PDF-1〜4 |
 
 ---
 
@@ -168,52 +84,9 @@
 
 ## 5. データ設計
 
-### 5.1 テーブル一覧
+詳細は [データ設計](data-design.md) を参照。
 
-| テーブル名 | 用途 |
-|-----------|------|
-| `incidents` | ヒヤリハット報告 |
-| `classes` | クラスマスタ |
-| `injury_types` | けがの種類マスタ |
-| `locations` | 場所マスタ |
-| `settings` | アプリ設定（パスワードハッシュ等） |
-
-### 5.2 スキーマ定義
-
-```sql
-CREATE TABLE classes (
-  id   INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE injury_types (
-  id   INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE locations (
-  id   INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE incidents (
-  id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  occurred_at    DATETIME NOT NULL,
-  location_id    INTEGER  NOT NULL REFERENCES locations(id),
-  class_id       INTEGER  NOT NULL REFERENCES classes(id),
-  child_name     TEXT     NOT NULL,
-  injury_type_id INTEGER  NOT NULL REFERENCES injury_types(id),
-  description    TEXT     NOT NULL,
-  created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE settings (
-  key   TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-  -- key='password_hash': scrypt ハッシュ（<saltHex>:<hashHex> 形式）
-);
-```
+テーブル構成：`incidents` / `classes` / `injury_types` / `locations` / `settings`
 
 ---
 
@@ -278,3 +151,13 @@ CREATE TABLE settings (
 - 自動バックアップ・自動アップデート
 - メール通知・プッシュ通知
 - 帳票の印刷プレビュー（PDFのみ対応）
+
+---
+
+## ドキュメント一覧
+
+| ドキュメント | 内容 |
+|-------------|------|
+| [機能要件詳細](functional-requirements.md) | 各機能の詳細要件（AUTH / FORM / LIST / MASTER / DASH / PDF） |
+| [データ設計](data-design.md) | テーブル定義・スキーマ・ER図 |
+| [開発ログ](../DEVELOPMENT.md) | Issue別作業記録・技術的決定事項・エラーログ |

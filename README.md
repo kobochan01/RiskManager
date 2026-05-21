@@ -60,5 +60,7 @@ npm run dev
 
 ## ドキュメント
 
-- [要件定義書](docs/requirements.md) — 機能要件・非機能要件・データ設計
+- [要件定義書](docs/requirements.md) — プロジェクト概要・機能一覧・フェーズ計画
+- [機能要件詳細](docs/functional-requirements.md) — 各機能の詳細要件（AUTH / FORM / LIST / MASTER / DASH / PDF）
+- [データ設計](docs/data-design.md) — テーブル定義・スキーマ・ER図
 - [開発ログ](DEVELOPMENT.md) — Issue別作業記録・技術的決定事項・エラーログ
