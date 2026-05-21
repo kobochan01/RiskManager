@@ -33,7 +33,8 @@
 | 7 | [#15](https://github.com/kobochan01/RiskManager/issues/15) | PDFレポート出力 | ✅ 完了 |
 | 8 | [#17](https://github.com/kobochan01/RiskManager/issues/17) | パスワード認証機能の撤廃 | ✅ 完了 |
 | 9 | [#19](https://github.com/kobochan01/RiskManager/issues/19) | 報告入力フォームの状態保持 + 一括クリアボタン | ✅ 完了 |
-| 10 | [#21](https://github.com/kobochan01/RiskManager/issues/21) | 報告入力のクラス・園児名・けがの種類にフリーワード入力を追加 | 作業中 |
+| 10 | [#21](https://github.com/kobochan01/RiskManager/issues/21) | 報告入力のクラス・園児名・けがの種類にフリーワード入力を追加 | ✅ 完了 |
+| 11 | [#23](https://github.com/kobochan01/RiskManager/issues/23) | ダッシュボード集計期間を月別・四半期別・年別の選択式に変更 | ✅ 完了 |
 
 ---
 
@@ -182,7 +183,11 @@ CREATE TABLE settings (
 | `feature/9-incident-form-and-master` | [#10](https://github.com/kobochan01/RiskManager/pull/10) | ヒヤリハット報告入力 + マスタ管理 | ✅ マージ済み |
 | `feature/11-incident-list` | [#12](https://github.com/kobochan01/RiskManager/pull/12) | 報告一覧・絞り込み検索 | ✅ マージ済み |
 | `feature/13-dashboard` | [#14](https://github.com/kobochan01/RiskManager/pull/14) | 集計ダッシュボード | ✅ マージ済み |
-| `feature/15-pdf-report` | - | PDFレポート出力 | 作業中 |
+| `feature/15-pdf-report` | [#16](https://github.com/kobochan01/RiskManager/pull/16) | PDFレポート出力 | ✅ マージ済み |
+| `fix/17-remove-password-auth` | [#18](https://github.com/kobochan01/RiskManager/pull/18) | パスワード認証機能の撤廃 | ✅ マージ済み |
+| `feature/19-form-state-retention` | [#20](https://github.com/kobochan01/RiskManager/pull/20) | フォーム状態保持 + 一括クリアボタン | ✅ マージ済み |
+| `feature/21-freeword-inputs` | [#22](https://github.com/kobochan01/RiskManager/pull/22) | クラス・けがの種類フリーワード + 園児名オートコンプリート | ✅ マージ済み |
+| `feature/23-dashboard-period-selector` | - | ダッシュボード集計期間の選択式変更（月別・四半期・年別） | レビュー待ち |
 
 ---
 
@@ -276,3 +281,24 @@ CREATE TABLE settings (
 
 - **DBスキーマは変更しない**: `settings` テーブルは残す。既存の `password_hash` レコードがあっても動作に影響なし
 - **既存ユーザーへの影響**: DB ファイルが残っていても認証チェックが消えたため、次回起動からそのまま使用可能
+
+---
+
+## Issue #23 作業記録（2026-05-21）
+
+### やったこと
+
+- `src/renderer/src/components/DashboardPage.tsx` を全面書き換え
+  - `Period` 型から `'custom'` を削除（`'month' | 'quarter' | 'year'` の3択に変更）
+  - `customFrom` / `customTo` state を削除
+  - `selectedYear` / `selectedMonth` / `selectedQuarter` state を追加
+  - `getPeriodRange()` を新シグネチャ `(period, year, month, quarter)` に変更
+  - `buildPeriodLabel()` 関数を追加（モード別の自然な日本語ラベル生成）
+  - 期間フィルタUIを「ボタン3つ＋年/月/四半期ドロップダウン」構成に変更
+
+### 技術的な決定事項
+
+- **四半期の定義**: 第1四半期=4〜6月、第2=7〜9月、第3=10〜12月、第4=翌年1〜3月（`QUARTER_RANGES` 定数で管理）
+- **selectedYear の意味**: 月別では暦年、四半期・年別では年度開始年（2026→2026年度＝2026-04-01〜2027-03-31）
+- **年ドロップダウンの範囲**: 現在年/年度から4年前まで5件を表示
+- **IPC変更なし**: `db:get-stats` の `{dateFrom, dateTo}` インターフェースはそのまま活用
