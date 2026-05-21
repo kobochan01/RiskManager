@@ -42,7 +42,7 @@ function App(): JSX.Element {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between print:hidden">
         <h1 className="text-lg font-bold text-gray-800">RiskManager</h1>
         <button
           onClick={() => setShowChangePw(true)}
@@ -53,7 +53,7 @@ function App(): JSX.Element {
       </header>
 
       {/* メインタブ */}
-      <div className="bg-white border-b border-gray-200 px-6">
+      <div className="bg-white border-b border-gray-200 px-6 print:hidden">
         <div className="flex gap-1">
           {([['form', '報告入力'], ['list', '報告一覧'], ['master', 'マスタ管理'], ['dashboard', 'ダッシュボード']] as [MainTab, string][]).map(([key, label]) => (
             <button
