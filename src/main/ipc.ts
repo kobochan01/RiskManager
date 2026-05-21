@@ -1,32 +1,8 @@
 import { ipcMain, dialog } from 'electron'
 import { writeFileSync } from 'fs'
 import { getDb, persistDb } from './db'
-import { hashPassword, verifyPassword } from './auth'
 
 export function registerIpcHandlers(): void {
-  // ---- 認証 ----
-  ipcMain.handle('auth:has-password', () => {
-    const rows = getDb().exec("SELECT value FROM settings WHERE key = 'password_hash'")
-    return rows[0]?.values.length > 0
-  })
-
-  ipcMain.handle('auth:verify', (_e, password: string) => {
-    const rows = getDb().exec("SELECT value FROM settings WHERE key = 'password_hash'")
-    const stored = rows[0]?.values[0]?.[0] as string | undefined
-    if (!stored) return false
-    return verifyPassword(password, stored)
-  })
-
-  ipcMain.handle('auth:set-password', (_e, password: string) => {
-    const hash = hashPassword(password)
-    getDb().run(
-      "INSERT INTO settings (key, value) VALUES ('password_hash', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-      [hash]
-    )
-    persistDb()
-  })
-
-
   // ---- クラスマスタ ----
   ipcMain.handle('db:get-classes', () => {
     const rows = getDb().exec('SELECT id, name FROM classes ORDER BY id')

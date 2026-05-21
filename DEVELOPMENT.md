@@ -30,14 +30,14 @@
 | 4 | [#9](https://github.com/kobochan01/RiskManager/issues/9) | ヒヤリハット報告入力 + マスタ管理（クラス・けがの種類・場所） | ✅ 完了 |
 | 5 | [#11](https://github.com/kobochan01/RiskManager/issues/11) | 報告一覧・絞り込み検索 | ✅ 完了 |
 | 6 | [#13](https://github.com/kobochan01/RiskManager/issues/13) | 集計ダッシュボード（時間帯別・けが種類別・場所別） | ✅ 完了 |
-| 7 | [#15](https://github.com/kobochan01/RiskManager/issues/15) | PDFレポート出力 | 作業中 |
+| 7 | [#15](https://github.com/kobochan01/RiskManager/issues/15) | PDFレポート出力 | ✅ 完了 |
+| 8 | [#17](https://github.com/kobochan01/RiskManager/issues/17) | パスワード認証機能の撤廃 | 作業中 |
 
 ---
 
 ## 機能スコープ（フェーズ）
 
 ### Phase 1 - MVP
-- 起動パスワード認証（変更機能あり）
 - ヒヤリハット報告入力（日時 / 場所フリーワード / クラス選択 / 名前 / けが種類選択 / 事故内容）
 - マスタ管理（クラス：事前設定 / けがの種類：登録制）
 - 報告一覧・絞り込み検索
@@ -257,3 +257,20 @@ CREATE TABLE settings (
 - **印刷レイアウト**: Tailwind の `print:hidden` / `hidden print:block` で `@media print` を制御。ヘッダー・タブ・操作ボタン類を非表示、ダッシュボードコンテンツのみ印刷
 - **PDF保存フロー**: 1回の IPC 呼び出し `pdf:export` で printToPDF → showSaveDialog → writeFileSync を直列実行。レンダラー側の Buffer 往復が不要
 - **IPC sender**: `e.sender.printToPDF()` でハンドラー呼び出し元の webContents を直接使用。`BrowserWindow.getFocusedWindow()` より確実
+
+---
+
+## Issue #17 作業記録（2026-05-21）
+
+### やったこと
+
+- `src/renderer/src/components/LoginPage.tsx` を削除
+- `src/renderer/src/components/ChangePasswordDialog.tsx` を削除
+- `src/main/auth.ts` を削除
+- `src/main/ipc.ts` から `auth:has-password` / `auth:verify` / `auth:set-password` ハンドラーを削除
+- `src/renderer/src/App.tsx` から認証フロー（`authState` / `hasPassword` / `showChangePw` 状態）とヘッダーの「パスワード変更」ボタンを削除。起動時に直接メイン画面を表示するよう変更
+
+### 技術的な決定事項
+
+- **DBスキーマは変更しない**: `settings` テーブルは残す。既存の `password_hash` レコードがあっても動作に影響なし
+- **既存ユーザーへの影響**: DB ファイルが残っていても認証チェックが消えたため、次回起動からそのまま使用可能
