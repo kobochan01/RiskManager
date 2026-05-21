@@ -12,7 +12,7 @@
 | `classes` | クラスマスタ |
 | `injury_types` | けがの種類マスタ |
 | `locations` | 場所マスタ |
-| `settings` | アプリ設定（パスワードハッシュ等） |
+| `settings` | アプリ設定 |
 
 ---
 
@@ -49,7 +49,6 @@ CREATE TABLE incidents (
 CREATE TABLE settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
-  -- key='password_hash': scrypt ハッシュ（<saltHex>:<hashHex> 形式）
 );
 ```
 
