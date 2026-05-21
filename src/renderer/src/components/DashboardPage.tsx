@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
+import { buildPdfFileName } from '../utils/pdfExport'
 
 type Period = 'month' | 'quarter' | 'year' | 'custom'
 
@@ -50,6 +51,7 @@ export default function DashboardPage(): JSX.Element {
   const [customTo, setCustomTo] = useState(() => toDateString(new Date()))
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     const { from, to } = getPeriodRange(period, customFrom, customTo)
@@ -64,10 +66,27 @@ export default function DashboardPage(): JSX.Element {
   const { from, to } = getPeriodRange(period, customFrom, customTo)
   const periodLabel = from && to ? `${from} 〜 ${to}` : ''
 
+  async function handleExportPdf(): Promise<void> {
+    setExporting(true)
+    try {
+      const defaultName = buildPdfFileName(from)
+      const result = await window.api.invoke('pdf:export', { defaultName }) as { success: boolean }
+      if (!result.success) return
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* 期間フィルタ */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
+      {/* 印刷用ヘッダー（画面では非表示） */}
+      <div className="hidden print:block mb-2">
+        <h1 className="text-xl font-bold text-gray-800">ヒヤリハット集計レポート</h1>
+        {periodLabel && <p className="text-sm text-gray-600 mt-1">集計期間：{periodLabel}</p>}
+      </div>
+
+      {/* 期間フィルタ（印刷時は非表示） */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4 print:hidden">
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-sm font-medium text-gray-600 mr-2">集計期間：</span>
           {(['month', 'quarter', 'year', 'custom'] as Period[]).map((p) => (
@@ -112,10 +131,19 @@ export default function DashboardPage(): JSX.Element {
 
       {!loading && stats && (
         <>
-          {/* 件数サマリー */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3">
-            <span className="text-3xl font-bold text-blue-600">{stats.total}</span>
-            <span className="text-gray-600 text-sm">件のインシデント</span>
+          {/* 件数サマリー + PDF出力ボタン */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-bold text-blue-600">{stats.total}</span>
+              <span className="text-gray-600 text-sm">件のインシデント</span>
+            </div>
+            <button
+              onClick={handleExportPdf}
+              disabled={exporting}
+              className="print:hidden px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {exporting ? 'PDF生成中...' : 'PDFとして出力'}
+            </button>
           </div>
 
           {stats.total === 0 ? (

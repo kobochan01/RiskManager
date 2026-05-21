@@ -29,8 +29,8 @@
 | 3 | [#7](https://github.com/kobochan01/RiskManager/issues/7) | 起動パスワード認証 + 変更機能 | ✅ 完了 |
 | 4 | [#9](https://github.com/kobochan01/RiskManager/issues/9) | ヒヤリハット報告入力 + マスタ管理（クラス・けがの種類・場所） | ✅ 完了 |
 | 5 | [#11](https://github.com/kobochan01/RiskManager/issues/11) | 報告一覧・絞り込み検索 | ✅ 完了 |
-| 6 | [#13](https://github.com/kobochan01/RiskManager/issues/13) | 集計ダッシュボード（時間帯別・けが種類別・場所別） | 作業中 |
-| 7 | - | PDFレポート出力 | 未着手 |
+| 6 | [#13](https://github.com/kobochan01/RiskManager/issues/13) | 集計ダッシュボード（時間帯別・けが種類別・場所別） | ✅ 完了 |
+| 7 | [#15](https://github.com/kobochan01/RiskManager/issues/15) | PDFレポート出力 | 作業中 |
 
 ---
 
@@ -179,7 +179,8 @@ CREATE TABLE settings (
 | `feature/7-password-auth` | [#8](https://github.com/kobochan01/RiskManager/pull/8) | 起動パスワード認証 + 変更機能 | ✅ マージ済み |
 | `feature/9-incident-form-and-master` | [#10](https://github.com/kobochan01/RiskManager/pull/10) | ヒヤリハット報告入力 + マスタ管理 | ✅ マージ済み |
 | `feature/11-incident-list` | [#12](https://github.com/kobochan01/RiskManager/pull/12) | 報告一覧・絞り込み検索 | ✅ マージ済み |
-| `feature/13-dashboard` | - | 集計ダッシュボード | 作業中 |
+| `feature/13-dashboard` | [#14](https://github.com/kobochan01/RiskManager/pull/14) | 集計ダッシュボード | ✅ マージ済み |
+| `feature/15-pdf-report` | - | PDFレポート出力 | 作業中 |
 
 ---
 
@@ -235,3 +236,24 @@ CREATE TABLE settings (
 - **時間帯集計**: SQLite の `strftime` で時・分を抽出し、`CAST(...) / 15 * 15` で15分刻みにバケット化。`slot_index = hour * 4 + minute / 15` の整数で GROUP BY し、フロント側で時刻文字列に変換
 - **期間フィルタ**: 今月・今四半期・今年・カスタムの4種。日付計算はフロントエンドで実施し、`dateFrom / dateTo` として IPC に渡す
 - **WASM パスの修正**: 本番パッケージ（electron-builder）では `process.resourcesPath`、開発時は `node_modules/sql.js/dist/`、preview モードでは `existsSync` でフォールバック
+
+---
+
+## Issue #15 作業記録（2026-05-21）
+
+### やったこと
+
+- `html2canvas` 1.4.1 / `jspdf` 4.2.1 / `vitest` 4.1.7 を追加
+- `src/renderer/src/utils/pdfExport.ts` を新規作成（`buildPdfFileName` ユーティリティ）
+- `src/renderer/src/utils/pdfExport.test.ts` を新規作成（5件テスト）
+- `vitest.config.ts` を新規作成、`package.json` に `test` スクリプトを追加
+- `src/main/ipc.ts` に `pdf:export` IPCハンドラーを追加（printToPDF + showSaveDialog + writeFile）
+- `src/renderer/src/components/DashboardPage.tsx` に「PDFとして出力」ボタンと印刷用ヘッダーを追加
+- `src/renderer/src/App.tsx` のヘッダー・タブに `print:hidden` を追加（PDF印刷時のレイアウト制御）
+
+### 技術的な決定事項
+
+- **PDF生成方式**: `html2canvas` ではなく Electron の `webContents.printToPDF()` を使用。recharts が SVG を使用しており html2canvas では正常に描画できないため、Chromium ネイティブの print-to-PDF を採用
+- **印刷レイアウト**: Tailwind の `print:hidden` / `hidden print:block` で `@media print` を制御。ヘッダー・タブ・操作ボタン類を非表示、ダッシュボードコンテンツのみ印刷
+- **PDF保存フロー**: 1回の IPC 呼び出し `pdf:export` で printToPDF → showSaveDialog → writeFileSync を直列実行。レンダラー側の Buffer 往復が不要
+- **IPC sender**: `e.sender.printToPDF()` でハンドラー呼び出し元の webContents を直接使用。`BrowserWindow.getFocusedWindow()` より確実

@@ -1,4 +1,5 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog } from 'electron'
+import { writeFileSync } from 'fs'
 import { getDb, persistDb } from './db'
 import { hashPassword, verifyPassword } from './auth'
 
@@ -172,6 +173,22 @@ export function registerIpcHandlers(): void {
       })),
       total: Number(totalRows[0]?.values[0]?.[0] ?? 0)
     }
+  })
+
+  // ---- PDF出力 ----
+  ipcMain.handle('pdf:export', async (e, payload: { defaultName: string }) => {
+    const pdfBuffer = await e.sender.printToPDF({
+      printBackground: true,
+      pageSize: 'A4',
+      landscape: true
+    })
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      defaultPath: payload.defaultName,
+      filters: [{ name: 'PDF ファイル', extensions: ['pdf'] }]
+    })
+    if (canceled || !filePath) return { success: false }
+    writeFileSync(filePath, pdfBuffer)
+    return { success: true }
   })
 
   // ---- 設定 ----
