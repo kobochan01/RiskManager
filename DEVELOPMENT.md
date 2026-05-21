@@ -32,7 +32,8 @@
 | 6 | [#13](https://github.com/kobochan01/RiskManager/issues/13) | 集計ダッシュボード（時間帯別・けが種類別・場所別） | ✅ 完了 |
 | 7 | [#15](https://github.com/kobochan01/RiskManager/issues/15) | PDFレポート出力 | ✅ 完了 |
 | 8 | [#17](https://github.com/kobochan01/RiskManager/issues/17) | パスワード認証機能の撤廃 | ✅ 完了 |
-| 9 | [#19](https://github.com/kobochan01/RiskManager/issues/19) | 報告入力フォームの状態保持 + 一括クリアボタン | 作業中 |
+| 9 | [#19](https://github.com/kobochan01/RiskManager/issues/19) | 報告入力フォームの状態保持 + 一括クリアボタン | ✅ 完了 |
+| 10 | [#21](https://github.com/kobochan01/RiskManager/issues/21) | 報告入力のクラス・園児名・けがの種類にフリーワード入力を追加 | 作業中 |
 
 ---
 

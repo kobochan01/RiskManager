@@ -2,6 +2,22 @@ import { useState, useEffect } from 'react'
 
 type MasterItem = [number, string]
 
+const CHILD_NAME_HISTORY_KEY = 'childNameHistory'
+
+function loadChildNameHistory(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(CHILD_NAME_HISTORY_KEY) ?? '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveChildNameHistory(name: string, history: string[]): string[] {
+  const updated = [name, ...history.filter((n) => n !== name)].slice(0, 50)
+  localStorage.setItem(CHILD_NAME_HISTORY_KEY, JSON.stringify(updated))
+  return updated
+}
+
 export default function IncidentForm(): JSX.Element {
   const [locations, setLocations] = useState<MasterItem[]>([])
   const [classes, setClasses] = useState<MasterItem[]>([])
@@ -16,6 +32,11 @@ export default function IncidentForm(): JSX.Element {
 
   const [newLocation, setNewLocation] = useState('')
   const [addLocationError, setAddLocationError] = useState('')
+  const [newClass, setNewClass] = useState('')
+  const [addClassError, setAddClassError] = useState('')
+  const [newInjuryType, setNewInjuryType] = useState('')
+  const [addInjuryTypeError, setAddInjuryTypeError] = useState('')
+  const [childNameHistory, setChildNameHistory] = useState<string[]>(() => loadChildNameHistory())
   const [submitMessage, setSubmitMessage] = useState('')
   const [submitError, setSubmitError] = useState('')
 
@@ -50,6 +71,38 @@ export default function IncidentForm(): JSX.Element {
     }
   }
 
+  async function handleAddClass(): Promise<void> {
+    const name = newClass.trim()
+    if (!name) return
+    try {
+      await window.api.invoke('db:add-class', name)
+      const updated = (await window.api.invoke('db:get-classes')) as MasterItem[]
+      setClasses(updated)
+      const added = updated.find((c) => c[1] === name)
+      if (added) setClassId(added[0])
+      setNewClass('')
+      setAddClassError('')
+    } catch {
+      setAddClassError('同じ名前のクラスがすでに登録されています')
+    }
+  }
+
+  async function handleAddInjuryType(): Promise<void> {
+    const name = newInjuryType.trim()
+    if (!name) return
+    try {
+      await window.api.invoke('db:add-injury-type', name)
+      const updated = (await window.api.invoke('db:get-injury-types')) as MasterItem[]
+      setInjuryTypes(updated)
+      const added = updated.find((i) => i[1] === name)
+      if (added) setInjuryTypeId(added[0])
+      setNewInjuryType('')
+      setAddInjuryTypeError('')
+    } catch {
+      setAddInjuryTypeError('同じ名前のけがの種類がすでに登録されています')
+    }
+  }
+
   function handleClear(): void {
     setOccurredAt('')
     setLocationId(0)
@@ -80,6 +133,7 @@ export default function IncidentForm(): JSX.Element {
         injury_type_id: injuryTypeId,
         description
       })
+      setChildNameHistory((prev) => saveChildNameHistory(childName, prev))
       handleClear()
       setSubmitMessage('報告を登録しました')
     } catch {
@@ -116,7 +170,6 @@ export default function IncidentForm(): JSX.Element {
               <option key={id} value={id}>{name}</option>
             ))}
           </select>
-          {/* 新しい場所を追加 */}
           <div className="flex gap-2 mt-2">
             <input
               type="text"
@@ -150,6 +203,24 @@ export default function IncidentForm(): JSX.Element {
               <option key={id} value={id}>{name}</option>
             ))}
           </select>
+          <div className="flex gap-2 mt-2">
+            <input
+              type="text"
+              placeholder="新しいクラスを入力"
+              value={newClass}
+              onChange={(e) => setNewClass(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddClass() } }}
+              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              type="button"
+              onClick={handleAddClass}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded"
+            >
+              追加
+            </button>
+          </div>
+          {addClassError && <p className="text-xs text-red-600 mt-1">{addClassError}</p>}
         </div>
 
         {/* 園児名 */}
@@ -157,10 +228,16 @@ export default function IncidentForm(): JSX.Element {
           <label className="block text-sm font-medium text-gray-600 mb-1">園児名</label>
           <input
             type="text"
+            list="child-name-list"
             value={childName}
             onChange={(e) => setChildName(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
+          <datalist id="child-name-list">
+            {childNameHistory.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
         </div>
 
         {/* けがの種類 */}
@@ -176,6 +253,24 @@ export default function IncidentForm(): JSX.Element {
               <option key={id} value={id}>{name}</option>
             ))}
           </select>
+          <div className="flex gap-2 mt-2">
+            <input
+              type="text"
+              placeholder="新しいけがの種類を入力"
+              value={newInjuryType}
+              onChange={(e) => setNewInjuryType(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddInjuryType() } }}
+              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              type="button"
+              onClick={handleAddInjuryType}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded"
+            >
+              追加
+            </button>
+          </div>
+          {addInjuryTypeError && <p className="text-xs text-red-600 mt-1">{addInjuryTypeError}</p>}
         </div>
 
         {/* 事故内容 */}
