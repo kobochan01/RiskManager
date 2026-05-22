@@ -9,10 +9,15 @@ const SPLIT_THRESHOLD = 15
 type Props = {
   matrix: MatrixData
   periodLabel: string
+  slotRange: 'am' | 'pm'
 }
 
-export default function PdfMatrixTable({ matrix, periodLabel }: Props): JSX.Element {
-  const { slotLabels, locations, injuryTypes, locationMatrix, injuryMatrix } = matrix
+export default function PdfMatrixTable({ matrix, periodLabel, slotRange }: Props): JSX.Element {
+  const { slotLabels: allSlotLabels, locations, injuryTypes, locationMatrix, injuryMatrix } = matrix
+  const slotLabels = allSlotLabels.filter((s) => {
+    const h = parseInt(s.slice(0, 2), 10)
+    return slotRange === 'am' ? h < 12 : h >= 12
+  })
   const isSplit = locations.length + injuryTypes.length > SPLIT_THRESHOLD
 
   return (
@@ -35,6 +40,7 @@ export default function PdfMatrixTable({ matrix, periodLabel }: Props): JSX.Elem
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 'bold' }}>時間帯別集計表</div>
         <div style={{ fontSize: 10, color: '#555' }}>集計期間：{periodLabel}</div>
+        <div style={{ fontSize: 10, color: '#555' }}>（{slotRange === 'am' ? '07:00〜11:59' : '12:00〜17:59'}）</div>
       </div>
 
       {slotLabels.length === 0 ? (
