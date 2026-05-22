@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
-import { buildPdfFileName } from '../utils/pdfExport'
+import { buildPdfFileName, buildPdfDocument } from '../utils/pdfExport'
+import type { IncidentRow, MatrixData } from '../utils/pdfExport'
+import PdfContainer from './pdf/PdfContainer'
+import type { PdfContainerHandle } from './pdf/PdfContainer'
 
 type Period = 'month' | 'quarter' | 'year'
 
@@ -15,6 +19,17 @@ type Stats = {
 }
 
 const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+
+function SlotTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
+  const parts = (payload?.value ?? '').split('-')
+  return (
+    <g transform={`translate(${x ?? 0},${y ?? 0})`}>
+      <text textAnchor="middle" fontSize={8} dy={10} fill="#555">{parts[0]}</text>
+      <text textAnchor="middle" fontSize={8} dy={20} fill="#555">〜</text>
+      <text textAnchor="middle" fontSize={8} dy={30} fill="#555">{parts[1]}</text>
+    </g>
+  )
+}
 
 const QUARTER_RANGES = [
   { startMonth: 4,  endMonth: 6,  yearOffset: 0 },
@@ -98,11 +113,44 @@ export default function DashboardPage(): JSX.Element {
     : Array.from({ length: 5 }, (_, i) => thisFiscalYear - 4 + i)
 
   async function handleExportPdf(): Promise<void> {
+    if (!stats) return
     setExporting(true)
     try {
-      const defaultName = buildPdfFileName(from)
-      const result = await window.api.invoke('pdf:export', { defaultName }) as { success: boolean }
-      if (!result.success) return
+      const { from: dateFrom, to: dateTo } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
+
+      const [incidents, matrix] = await Promise.all([
+        window.api.invoke('db:get-incidents-filtered', { dateFrom, dateTo }) as Promise<IncidentRow[]>,
+        window.api.invoke('db:get-matrix', { dateFrom, dateTo }) as Promise<MatrixData>,
+      ])
+
+      // PdfContainerを画面外DOMに一時マウント
+      const container = document.createElement('div')
+      document.body.appendChild(container)
+      const pdfRef = { current: null as PdfContainerHandle | null }
+
+      await new Promise<void>((resolve) => {
+        const root = createRoot(container)
+        root.render(
+          <PdfContainer
+            ref={(handle) => { pdfRef.current = handle }}
+            incidents={incidents}
+            stats={stats}
+            matrix={matrix}
+            periodLabel={periodLabel}
+          />
+        )
+        // Rechartsの描画完了を待つ
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
+
+      const pageElements = pdfRef.current?.getPageElements() ?? []
+      const buffer = await buildPdfDocument(pageElements)
+
+      // DOMクリーンアップ
+      document.body.removeChild(container)
+
+      const defaultName = buildPdfFileName(dateFrom)
+      await window.api.invoke('pdf:export-save', { buffer, defaultName })
     } finally {
       setExporting(false)
     }
@@ -220,13 +268,14 @@ export default function DashboardPage(): JSX.Element {
                 {stats.timeSlots.length === 0 ? (
                   <p className="text-center text-gray-400 text-sm py-8">データなし</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={stats.timeSlots} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={stats.timeSlots} margin={{ top: 4, right: 16, left: 0, bottom: 40 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="slot"
-                        tick={{ fontSize: 10 }}
-                        interval="preserveStartEnd"
+                        tick={<SlotTick />}
+                        interval={3}
+                        height={50}
                       />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
                       <Tooltip formatter={(v) => [`${v}件`, '件数']} />
