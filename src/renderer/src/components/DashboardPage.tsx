@@ -264,7 +264,7 @@ export default function DashboardPage(): JSX.Element {
             <>
               {/* 時間帯別グラフ */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h2 className="text-sm font-semibold text-gray-700 mb-4">時間帯別（15分刻み）</h2>
+                <h2 className="text-sm font-semibold text-gray-700 mb-4">時間帯別（1時間ごと）</h2>
                 {stats.timeSlots.length === 0 ? (
                   <p className="text-center text-gray-400 text-sm py-8">データなし</p>
                 ) : (
@@ -274,7 +274,7 @@ export default function DashboardPage(): JSX.Element {
                       <XAxis
                         dataKey="slot"
                         tick={<SlotTick />}
-                        interval={3}
+                        interval={0}
                         height={50}
                       />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
