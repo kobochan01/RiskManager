@@ -35,6 +35,13 @@
 | 9 | [#19](https://github.com/kobochan01/RiskManager/issues/19) | 報告入力フォームの状態保持 + 一括クリアボタン | ✅ 完了 |
 | 10 | [#21](https://github.com/kobochan01/RiskManager/issues/21) | 報告入力のクラス・園児名・けがの種類にフリーワード入力を追加 | ✅ 完了 |
 | 11 | [#23](https://github.com/kobochan01/RiskManager/issues/23) | ダッシュボード集計期間を月別・四半期別・年別の選択式に変更 | ✅ 完了 |
+| 12 | [#25](https://github.com/kobochan01/RiskManager/issues/25) | 時間帯別集計の行ラベルを期間表示（HH:MM-HH:MM形式）に変更 | ✅ 完了 |
+| 13 | [#27](https://github.com/kobochan01/RiskManager/issues/27) | PDF集計表を午前/午後2ページ分割・グラフ全スロット表示に変更 | ✅ 完了 |
+| 14 | [#29](https://github.com/kobochan01/RiskManager/issues/29) | 報告一覧・マスタ管理に編集機能を追加 | ✅ 完了 |
+| 15 | [#31](https://github.com/kobochan01/RiskManager/issues/31) | 集計表セル結合・グラフ1時間表示・日時日本語形式に対応 | ✅ 完了 |
+| 16 | [#33](https://github.com/kobochan01/RiskManager/issues/33) | pdfExport.ts に型定義とPDF生成関数を追加 | ✅ 完了 |
+| 17 | [#35](https://github.com/kobochan01/RiskManager/issues/35) | 時刻の時間部ゼロパディングとPDF集計表PMラベルのバグを修正 | ✅ 完了 |
+| 18 | [#37](https://github.com/kobochan01/RiskManager/issues/37) | recharts v3の自動ラベル間引きを防ぎ時間帯別グラフ横軸に全12ラベルを表示 | ✅ 完了 |
 
 ---
 
