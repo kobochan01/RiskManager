@@ -274,7 +274,7 @@ export default function DashboardPage(): JSX.Element {
                       <XAxis
                         dataKey="slot"
                         tick={<SlotTick />}
-                        interval="preserveStartEnd"
+                        interval={3}
                         height={50}
                       />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />

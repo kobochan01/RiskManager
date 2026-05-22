@@ -129,17 +129,24 @@ export function registerIpcHandlers(): void {
       WHERE date(occurred_at) >= ? AND date(occurred_at) <= ?
     `, [dateFrom, dateTo])
 
-    return {
-      timeSlots: (timeRows[0]?.values ?? []).map(([slotIndex, count]) => {
-        const idx = Number(slotIndex)
-        const h = Math.floor(idx / 4)
-        const m = (idx % 4) * 15
+    const countMap = new Map<number, number>()
+    for (const [slotIndex, count] of (timeRows[0]?.values ?? [])) {
+      countMap.set(Number(slotIndex), Number(count))
+    }
+    const timeSlots: { slot: string; count: number }[] = []
+    for (let h = 7; h <= 17; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        const idx = h * 4 + m / 15
         const hh = String(h).padStart(2, '0')
-        return {
+        timeSlots.push({
           slot: `${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`,
-          count: Number(count)
-        }
-      }),
+          count: countMap.get(idx) ?? 0
+        })
+      }
+    }
+
+    return {
+      timeSlots,
       injuryTypes: (injuryRows[0]?.values ?? []).map(([name, count]) => ({
         name: String(name),
         count: Number(count)
