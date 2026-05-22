@@ -23,7 +23,9 @@ export default function IncidentForm(): JSX.Element {
   const [classes, setClasses] = useState<MasterItem[]>([])
   const [injuryTypes, setInjuryTypes] = useState<MasterItem[]>([])
 
-  const [occurredAt, setOccurredAt] = useState('')
+  const [occurredDate, setOccurredDate] = useState('')
+  const [occurredHour, setOccurredHour] = useState('')
+  const [occurredMinute, setOccurredMinute] = useState('')
   const [locationId, setLocationId] = useState<number>(0)
   const [classId, setClassId] = useState<number>(0)
   const [childName, setChildName] = useState('')
@@ -104,7 +106,9 @@ export default function IncidentForm(): JSX.Element {
   }
 
   function handleClear(): void {
-    setOccurredAt('')
+    setOccurredDate('')
+    setOccurredHour('')
+    setOccurredMinute('')
     setLocationId(0)
     setClassId(0)
     setChildName('')
@@ -119,14 +123,14 @@ export default function IncidentForm(): JSX.Element {
     setSubmitMessage('')
     setSubmitError('')
 
-    if (!occurredAt || locationId === 0 || classId === 0 || !childName || injuryTypeId === 0 || !description) {
+    if (!occurredDate || !occurredHour || !occurredMinute || locationId === 0 || classId === 0 || !childName || injuryTypeId === 0 || !description) {
       setSubmitError('すべての項目を入力してください')
       return
     }
 
     try {
       await window.api.invoke('db:add-incident', {
-        occurred_at: occurredAt,
+        occurred_at: `${occurredDate}T${occurredHour}:${occurredMinute}`,
         location_id: locationId,
         class_id: classId,
         child_name: childName,
@@ -149,12 +153,38 @@ export default function IncidentForm(): JSX.Element {
         {/* 発生日時 */}
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">発生日時</label>
-          <input
-            type="datetime-local"
-            value={occurredAt}
-            onChange={(e) => setOccurredAt(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
+          <div className="flex gap-2 items-center flex-wrap">
+            <input
+              type="date"
+              value={occurredDate}
+              onChange={(e) => setOccurredDate(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <select
+              value={occurredHour}
+              onChange={(e) => setOccurredHour(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">--</option>
+              {Array.from({ length: 12 }, (_, i) => {
+                const h = String(i + 7).padStart(2, '0')
+                return <option key={h} value={h}>{h}</option>
+              })}
+            </select>
+            <span className="text-sm text-gray-600">時</span>
+            <select
+              value={occurredMinute}
+              onChange={(e) => setOccurredMinute(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">--</option>
+              {Array.from({ length: 60 }, (_, i) => {
+                const m = String(i).padStart(2, '0')
+                return <option key={m} value={m}>{m}</option>
+              })}
+            </select>
+            <span className="text-sm text-gray-600">分</span>
+          </div>
         </div>
 
         {/* 場所 */}
