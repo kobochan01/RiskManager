@@ -75,7 +75,7 @@ export default function PdfChartDashboard({ timeSlots, injuryTypes, locations, p
       {/* 上段: 時間帯別グラフ */}
       <div style={{ marginBottom: GAP }}>
         <div style={{ fontSize: 11, fontWeight: 'bold', color: '#1e40af', marginBottom: 4 }}>
-          時間帯別インシデント件数（15分刻み）
+          時間帯別インシデント件数（1時間ごと）
         </div>
         {timeSlots.length === 0 ? (
           <NoData h={topH} />
@@ -85,7 +85,7 @@ export default function PdfChartDashboard({ timeSlots, injuryTypes, locations, p
             <XAxis
               dataKey="slot"
               tick={<SlotTick />}
-              interval={3}
+              interval={0}
               height={40}
             />
             <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={28} />

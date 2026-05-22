@@ -1,5 +1,11 @@
 import { Fragment, useEffect, useState } from 'react'
 
+function formatOccurredAt(raw: string): string {
+  const d = new Date(raw.replace(' ', 'T'))
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}時${mm}分`
+}
+
 type MasterItem = [number, string]
 type IncidentRow = [number, string, string, string, string, string, string, string]
 // [id, occurred_at, location_name, class_name, child_name, injury_type_name, description, created_at]
@@ -239,7 +245,7 @@ export default function IncidentList(): JSX.Element {
                       onClick={() => setExpandedId(isExpanded ? null : id)}
                       className="cursor-pointer hover:bg-blue-50 transition-colors"
                     >
-                      <td className="px-3 py-2 text-gray-700">{occurredAt.replace('T', ' ').slice(0, 16)}</td>
+                      <td className="px-3 py-2 text-gray-700">{formatOccurredAt(occurredAt)}</td>
                       <td className="px-3 py-2 text-gray-700">{locationName}</td>
                       <td className="px-3 py-2 text-gray-700">{className}</td>
                       <td className="px-3 py-2 text-gray-700">{childName}</td>
