@@ -43,6 +43,7 @@
 | 17 | [#35](https://github.com/kobochan01/RiskManager/issues/35) | 時刻の時間部ゼロパディングとPDF集計表PMラベルのバグを修正 | ✅ 完了 |
 | 18 | [#37](https://github.com/kobochan01/RiskManager/issues/37) | recharts v3の自動ラベル間引きを防ぎ時間帯別グラフ横軸に全12ラベルを表示 | ✅ 完了 |
 | 19 | [#39](https://github.com/kobochan01/RiskManager/issues/39) | Stopフックでコードコミット時のmdファイル更新チェックを自動化 | ✅ 完了 |
+| 20 | [#41](https://github.com/kobochan01/RiskManager/issues/41) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ 完了 |
 
 ---
 
@@ -195,7 +196,8 @@ CREATE TABLE settings (
 | `fix/17-remove-password-auth` | [#18](https://github.com/kobochan01/RiskManager/pull/18) | パスワード認証機能の撤廃 | ✅ マージ済み |
 | `feature/19-form-state-retention` | [#20](https://github.com/kobochan01/RiskManager/pull/20) | フォーム状態保持 + 一括クリアボタン | ✅ マージ済み |
 | `feature/21-freeword-inputs` | [#22](https://github.com/kobochan01/RiskManager/pull/22) | クラス・けがの種類フリーワード + 園児名オートコンプリート | ✅ マージ済み |
-| `feature/23-dashboard-period-selector` | - | ダッシュボード集計期間の選択式変更（月別・四半期・年別） | レビュー待ち |
+| `feature/23-dashboard-period-selector` | - | ダッシュボード集計期間の選択式変更（月別・四半期・年別） | ✅ マージ済み |
+| `feature/41-restrict-time-selection-07-18` | [#42](https://github.com/kobochan01/RiskManager/pull/42) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ マージ済み |
 
 ---
 
