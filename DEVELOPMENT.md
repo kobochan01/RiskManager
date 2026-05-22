@@ -42,6 +42,7 @@
 | 16 | [#33](https://github.com/kobochan01/RiskManager/issues/33) | pdfExport.ts に型定義とPDF生成関数を追加 | ✅ 完了 |
 | 17 | [#35](https://github.com/kobochan01/RiskManager/issues/35) | 時刻の時間部ゼロパディングとPDF集計表PMラベルのバグを修正 | ✅ 完了 |
 | 18 | [#37](https://github.com/kobochan01/RiskManager/issues/37) | recharts v3の自動ラベル間引きを防ぎ時間帯別グラフ横軸に全12ラベルを表示 | ✅ 完了 |
+| 19 | [#39](https://github.com/kobochan01/RiskManager/issues/39) | Stopフックでコードコミット時のmdファイル更新チェックを自動化 | ✅ 完了 |
 
 ---
 
