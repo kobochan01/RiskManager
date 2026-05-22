@@ -276,6 +276,7 @@ export default function DashboardPage(): JSX.Element {
                         tick={<SlotTick />}
                         interval={0}
                         height={50}
+                        ticks={stats.timeSlots.map(s => s.slot)}
                       />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
                       <Tooltip formatter={(v) => [`${v}件`, '件数']} />

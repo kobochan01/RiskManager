@@ -87,6 +87,7 @@ export default function PdfChartDashboard({ timeSlots, injuryTypes, locations, p
               tick={<SlotTick />}
               interval={0}
               height={40}
+              ticks={timeSlots.map(s => s.slot)}
             />
             <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={28} />
             <Tooltip formatter={(v) => [`${v}件`, '件数']} />
