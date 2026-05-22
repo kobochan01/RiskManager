@@ -134,8 +134,9 @@ export function registerIpcHandlers(): void {
         const idx = Number(slotIndex)
         const h = Math.floor(idx / 4)
         const m = (idx % 4) * 15
+        const hh = String(h).padStart(2, '0')
         return {
-          slot: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+          slot: `${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`,
           count: Number(count)
         }
       }),
@@ -151,7 +152,122 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  // ---- PDF出力 ----
+  // ---- 期間フィルタ付き事案一覧 ----
+  ipcMain.handle('db:get-incidents-filtered', (_e, payload: { dateFrom: string; dateTo: string }) => {
+    const { dateFrom, dateTo } = payload
+    const rows = getDb().exec(`
+      SELECT i.id, i.occurred_at, l.name, c.name, i.child_name,
+             it.name, i.description
+      FROM incidents i
+      JOIN locations   l  ON l.id  = i.location_id
+      JOIN classes     c  ON c.id  = i.class_id
+      JOIN injury_types it ON it.id = i.injury_type_id
+      WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      ORDER BY i.occurred_at
+    `, [dateFrom, dateTo])
+    return rows[0]?.values ?? []
+  })
+
+  // ---- 時間帯クロス集計（場所別・けが種類別） ----
+  ipcMain.handle('db:get-matrix', (_e, payload: { dateFrom: string; dateTo: string }) => {
+    const { dateFrom, dateTo } = payload
+    const db = getDb()
+
+    const locRows = db.exec(`
+      SELECT
+        CAST(strftime('%H', i.occurred_at) AS INTEGER) * 4 +
+        CAST(strftime('%M', i.occurred_at) AS INTEGER) / 15 AS slot_index,
+        l.name AS location_name,
+        COUNT(*) AS count
+      FROM incidents i
+      JOIN locations l ON l.id = i.location_id
+      WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      GROUP BY slot_index, location_name
+      ORDER BY slot_index
+    `, [dateFrom, dateTo])
+
+    const injRows = db.exec(`
+      SELECT
+        CAST(strftime('%H', i.occurred_at) AS INTEGER) * 4 +
+        CAST(strftime('%M', i.occurred_at) AS INTEGER) / 15 AS slot_index,
+        it.name AS injury_type_name,
+        COUNT(*) AS count
+      FROM incidents i
+      JOIN injury_types it ON it.id = i.injury_type_id
+      WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      GROUP BY slot_index, injury_type_name
+      ORDER BY slot_index
+    `, [dateFrom, dateTo])
+
+    const locationMatrix: Record<string, Record<string, number>> = {}
+    const injuryMatrix: Record<string, Record<string, number>> = {}
+
+    // 表示する時間帯スロット（07:00〜18:00、15分刻み）
+    const SLOT_START_H = 7
+    const SLOT_END_H = 18
+    const allSlots: string[] = []
+    for (let h = SLOT_START_H; h <= SLOT_END_H; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        if (h === SLOT_END_H && m > 0) break
+        const hh = String(h).padStart(2, '0')
+        allSlots.push(`${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`)
+      }
+    }
+    const slotSet = new Set<string>(allSlots)
+
+    // マスタ全件を列の初期値にする（0件の項目も表示するため）
+    const allLocRows = db.exec('SELECT name FROM locations ORDER BY id')
+    const allInjRows = db.exec('SELECT name FROM injury_types ORDER BY id')
+    const locationSet = new Set<string>(
+      (allLocRows[0]?.values ?? []).map(([name]) => String(name))
+    )
+    const injuryTypeSet = new Set<string>(
+      (allInjRows[0]?.values ?? []).map(([name]) => String(name))
+    )
+
+    for (const [slotIndex, locationName, count] of (locRows[0]?.values ?? [])) {
+      const idx = Number(slotIndex)
+      const h = Math.floor(idx / 4)
+      const m = (idx % 4) * 15
+      const hh = String(h).padStart(2, '0')
+      const slot = `${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`
+      if (!slotSet.has(slot)) continue
+      if (!locationMatrix[slot]) locationMatrix[slot] = {}
+      locationMatrix[slot][String(locationName)] = Number(count)
+    }
+
+    for (const [slotIndex, injuryTypeName, count] of (injRows[0]?.values ?? [])) {
+      const idx = Number(slotIndex)
+      const h = Math.floor(idx / 4)
+      const m = (idx % 4) * 15
+      const hh = String(h).padStart(2, '0')
+      const slot = `${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`
+      if (!slotSet.has(slot)) continue
+      if (!injuryMatrix[slot]) injuryMatrix[slot] = {}
+      injuryMatrix[slot][String(injuryTypeName)] = Number(count)
+    }
+
+    return {
+      slotLabels: Array.from(slotSet).sort(),
+      locations: Array.from(locationSet),
+      injuryTypes: Array.from(injuryTypeSet),
+      locationMatrix,
+      injuryMatrix,
+    }
+  })
+
+  // ---- PDF保存（バッファ受け取り） ----
+  ipcMain.handle('pdf:export-save', async (_e, payload: { buffer: number[]; defaultName: string }) => {
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      defaultPath: payload.defaultName,
+      filters: [{ name: 'PDF ファイル', extensions: ['pdf'] }]
+    })
+    if (canceled || !filePath) return { success: false }
+    writeFileSync(filePath, Buffer.from(payload.buffer))
+    return { success: true }
+  })
+
+  // ---- PDF出力（旧実装・互換用） ----
   ipcMain.handle('pdf:export', async (e, payload: { defaultName: string }) => {
     const pdfBuffer = await e.sender.printToPDF({
       printBackground: true,
