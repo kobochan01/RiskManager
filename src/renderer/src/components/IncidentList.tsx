@@ -2,8 +2,9 @@ import { Fragment, useEffect, useState } from 'react'
 
 function formatOccurredAt(raw: string): string {
   const d = new Date(raw.replace(' ', 'T'))
+  const hh = String(d.getHours()).padStart(2, '0')
   const mm = String(d.getMinutes()).padStart(2, '0')
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}時${mm}分`
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${hh}時${mm}分`
 }
 
 type MasterItem = [number, string]

@@ -36,7 +36,7 @@ export default function PdfMatrixTable({ matrix, periodLabel, slotRange }: Props
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 'bold' }}>時間帯別集計表</div>
         <div style={{ fontSize: 10, color: '#555' }}>集計期間：{periodLabel}</div>
-        <div style={{ fontSize: 10, color: '#555' }}>（{slotRange === 'am' ? '07:00〜11:59' : '12:00〜17:59'}）</div>
+        <div style={{ fontSize: 10, color: '#555' }}>（{slotRange === 'am' ? '07:00〜11:59' : '12:00〜18:59'}）</div>
       </div>
 
       {slotLabels.length === 0 ? (
