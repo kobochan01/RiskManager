@@ -294,12 +294,38 @@ export default function IncidentList(): JSX.Element {
 
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">発生日時</label>
-                <input
-                  type="datetime-local"
-                  value={editTarget.occurred_at}
-                  onChange={(e) => setEditTarget((t) => t && { ...t, occurred_at: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+                <div className="flex gap-2 items-center flex-wrap">
+                  <input
+                    type="date"
+                    value={editTarget.occurred_at.slice(0, 10)}
+                    onChange={(e) => setEditTarget((t) => t && { ...t, occurred_at: `${e.target.value}T${t.occurred_at.slice(11, 16) || '07:00'}` })}
+                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <select
+                    value={editTarget.occurred_at.slice(11, 13)}
+                    onChange={(e) => setEditTarget((t) => t && { ...t, occurred_at: `${t.occurred_at.slice(0, 10)}T${e.target.value}:${t.occurred_at.slice(14, 16) || '00'}` })}
+                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">--</option>
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const h = String(i + 7).padStart(2, '0')
+                      return <option key={h} value={h}>{h}</option>
+                    })}
+                  </select>
+                  <span className="text-sm text-gray-600">時</span>
+                  <select
+                    value={editTarget.occurred_at.slice(14, 16)}
+                    onChange={(e) => setEditTarget((t) => t && { ...t, occurred_at: `${t.occurred_at.slice(0, 13)}:${e.target.value}` })}
+                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">--</option>
+                    {Array.from({ length: 60 }, (_, i) => {
+                      const m = String(i).padStart(2, '0')
+                      return <option key={m} value={m}>{m}</option>
+                    })}
+                  </select>
+                  <span className="text-sm text-gray-600">分</span>
+                </div>
               </div>
 
               <div>
