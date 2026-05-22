@@ -19,6 +19,11 @@ export function registerIpcHandlers(): void {
     persistDb()
   })
 
+  ipcMain.handle('db:update-class', (_e, id: number, name: string) => {
+    getDb().run('UPDATE classes SET name = ? WHERE id = ?', [name, id])
+    persistDb()
+  })
+
   // ---- けが種類マスタ ----
   ipcMain.handle('db:get-injury-types', () => {
     const rows = getDb().exec('SELECT id, name FROM injury_types ORDER BY id')
@@ -35,6 +40,11 @@ export function registerIpcHandlers(): void {
     persistDb()
   })
 
+  ipcMain.handle('db:update-injury-type', (_e, id: number, name: string) => {
+    getDb().run('UPDATE injury_types SET name = ? WHERE id = ?', [name, id])
+    persistDb()
+  })
+
   // ---- 場所マスタ ----
   ipcMain.handle('db:get-locations', () => {
     const rows = getDb().exec('SELECT id, name FROM locations ORDER BY id')
@@ -48,6 +58,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('db:delete-location', (_e, id: number) => {
     getDb().run('DELETE FROM locations WHERE id = ?', [id])
+    persistDb()
+  })
+
+  ipcMain.handle('db:update-location', (_e, id: number, name: string) => {
+    getDb().run('UPDATE locations SET name = ? WHERE id = ?', [name, id])
     persistDb()
   })
 
@@ -90,6 +105,35 @@ export function registerIpcHandlers(): void {
     persistDb()
   })
 
+  ipcMain.handle('db:update-incident', (_e, payload: {
+    id: number
+    occurred_at: string
+    location_id: number
+    class_id: number
+    child_name: string
+    injury_type_id: number
+    description: string
+  }) => {
+    getDb().run(
+      `UPDATE incidents SET
+        occurred_at = ?, location_id = ?, class_id = ?,
+        child_name = ?, injury_type_id = ?, description = ?,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        payload.occurred_at, payload.location_id, payload.class_id,
+        payload.child_name, payload.injury_type_id, payload.description,
+        payload.id
+      ]
+    )
+    persistDb()
+  })
+
+  ipcMain.handle('db:delete-incident', (_e, id: number) => {
+    getDb().run('DELETE FROM incidents WHERE id = ?', [id])
+    persistDb()
+  })
+
   // ---- 集計 ----
   ipcMain.handle('db:get-stats', (_e, payload: { dateFrom: string; dateTo: string }) => {
     const db = getDb()
@@ -97,8 +141,7 @@ export function registerIpcHandlers(): void {
 
     const timeRows = db.exec(`
       SELECT
-        CAST(strftime('%H', occurred_at) AS INTEGER) * 4 +
-        CAST(strftime('%M', occurred_at) AS INTEGER) / 15 AS slot_index,
+        CAST(strftime('%H', occurred_at) AS INTEGER) AS slot_index,
         COUNT(*) AS count
       FROM incidents
       WHERE date(occurred_at) >= ? AND date(occurred_at) <= ?
@@ -134,15 +177,12 @@ export function registerIpcHandlers(): void {
       countMap.set(Number(slotIndex), Number(count))
     }
     const timeSlots: { slot: string; count: number }[] = []
-    for (let h = 7; h <= 17; h++) {
-      for (let m = 0; m < 60; m += 15) {
-        const idx = h * 4 + m / 15
-        const hh = String(h).padStart(2, '0')
-        timeSlots.push({
-          slot: `${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`,
-          count: countMap.get(idx) ?? 0
-        })
-      }
+    for (let h = 7; h <= 18; h++) {
+      const hh = String(h).padStart(2, '0')
+      timeSlots.push({
+        slot: `${hh}:00-${hh}:59`,
+        count: countMap.get(h) ?? 0
+      })
     }
 
     return {
@@ -215,7 +255,6 @@ export function registerIpcHandlers(): void {
     const allSlots: string[] = []
     for (let h = SLOT_START_H; h <= SLOT_END_H; h++) {
       for (let m = 0; m < 60; m += 15) {
-        if (h === SLOT_END_H && m > 0) break
         const hh = String(h).padStart(2, '0')
         allSlots.push(`${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`)
       }

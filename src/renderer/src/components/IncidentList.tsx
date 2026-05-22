@@ -12,8 +12,19 @@ type Filters = {
   dateTo: string
 }
 
+type EditTarget = {
+  id: number
+  occurred_at: string
+  location_id: number
+  class_id: number
+  child_name: string
+  injury_type_id: number
+  description: string
+}
+
 export default function IncidentList(): JSX.Element {
   const [rows, setRows] = useState<IncidentRow[]>([])
+  const [locations, setLocations] = useState<MasterItem[]>([])
   const [classes, setClasses] = useState<MasterItem[]>([])
   const [injuryTypes, setInjuryTypes] = useState<MasterItem[]>([])
   const [filters, setFilters] = useState<Filters>({
@@ -24,18 +35,23 @@ export default function IncidentList(): JSX.Element {
     dateTo: '',
   })
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
+  const [editError, setEditError] = useState('')
 
-  useEffect(() => {
-    Promise.all([
+  async function loadAll(): Promise<void> {
+    const [incidents, locs, cls, inj] = await Promise.all([
       window.api.invoke('db:get-incidents'),
+      window.api.invoke('db:get-locations'),
       window.api.invoke('db:get-classes'),
       window.api.invoke('db:get-injury-types'),
-    ]).then(([incidents, cls, inj]) => {
-      setRows(incidents as IncidentRow[])
-      setClasses(cls as MasterItem[])
-      setInjuryTypes(inj as MasterItem[])
-    })
-  }, [])
+    ])
+    setRows(incidents as IncidentRow[])
+    setLocations(locs as MasterItem[])
+    setClasses(cls as MasterItem[])
+    setInjuryTypes(inj as MasterItem[])
+  }
+
+  useEffect(() => { loadAll() }, [])
 
   const filtered = rows.filter((r) => {
     const [, occurredAt, , className, childName, injuryTypeName, description] = r
@@ -64,6 +80,55 @@ export default function IncidentList(): JSX.Element {
   }
 
   const hasFilter = Object.values(filters).some(Boolean)
+
+  function openEdit(row: IncidentRow): void {
+    const [id, occurred_at, locationName, className, , injuryTypeName, description] = row
+    const childName = row[4]
+    const loc = locations.find(([, n]) => n === locationName)
+    const cls = classes.find(([, n]) => n === className)
+    const inj = injuryTypes.find(([, n]) => n === injuryTypeName)
+    setEditTarget({
+      id,
+      occurred_at: occurred_at.slice(0, 16),
+      location_id: loc?.[0] ?? 0,
+      class_id: cls?.[0] ?? 0,
+      child_name: childName,
+      injury_type_id: inj?.[0] ?? 0,
+      description,
+    })
+    setEditError('')
+  }
+
+  async function handleSave(): Promise<void> {
+    if (!editTarget) return
+    if (
+      !editTarget.occurred_at || editTarget.location_id === 0 ||
+      editTarget.class_id === 0 || !editTarget.child_name ||
+      editTarget.injury_type_id === 0 || !editTarget.description
+    ) {
+      setEditError('すべての項目を入力してください')
+      return
+    }
+    const hour = new Date(editTarget.occurred_at).getHours()
+    if (hour < 7 || hour > 18) {
+      setEditError('発生時刻は07:00〜18:59の範囲で入力してください')
+      return
+    }
+    try {
+      await window.api.invoke('db:update-incident', editTarget)
+      setEditTarget(null)
+      await loadAll()
+    } catch {
+      setEditError('更新に失敗しました')
+    }
+  }
+
+  async function handleDelete(id: number): Promise<void> {
+    if (!window.confirm('この報告を削除してもよいですか？')) return
+    await window.api.invoke('db:delete-incident', id)
+    setExpandedId(null)
+    await loadAll()
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -160,6 +225,7 @@ export default function IncidentList(): JSX.Element {
                 <th className="px-3 py-2 text-left w-24">園児名</th>
                 <th className="px-3 py-2 text-left w-24">けがの種類</th>
                 <th className="px-3 py-2 text-left">内容</th>
+                <th className="px-3 py-2 text-left w-20"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -179,10 +245,26 @@ export default function IncidentList(): JSX.Element {
                       <td className="px-3 py-2 text-gray-700">{childName}</td>
                       <td className="px-3 py-2 text-gray-700">{injuryTypeName}</td>
                       <td className="px-3 py-2 text-gray-500">{shortDesc}</td>
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => openEdit(r)}
+                            className="text-xs text-gray-400 hover:text-blue-600 px-2 py-1 rounded hover:bg-blue-50"
+                          >
+                            編集
+                          </button>
+                          <button
+                            onClick={() => handleDelete(id)}
+                            className="text-xs text-gray-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                     {isExpanded && (
                       <tr className="bg-blue-50">
-                        <td colSpan={6} className="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap">
+                        <td colSpan={7} className="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap">
                           <span className="font-medium text-gray-500 text-xs mr-2">内容:</span>
                           {description}
                         </td>
@@ -193,6 +275,106 @@ export default function IncidentList(): JSX.Element {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* 編集モーダル */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-base font-bold text-gray-800 mb-4">報告を編集</h3>
+            <div className="space-y-4">
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">発生日時</label>
+                <input
+                  type="datetime-local"
+                  value={editTarget.occurred_at}
+                  onChange={(e) => setEditTarget((t) => t && { ...t, occurred_at: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">場所</label>
+                <select
+                  value={editTarget.location_id}
+                  onChange={(e) => setEditTarget((t) => t && { ...t, location_id: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value={0}>-- 選択してください --</option>
+                  {locations.map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">クラス</label>
+                <select
+                  value={editTarget.class_id}
+                  onChange={(e) => setEditTarget((t) => t && { ...t, class_id: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value={0}>-- 選択してください --</option>
+                  {classes.map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">園児名</label>
+                <input
+                  type="text"
+                  value={editTarget.child_name}
+                  onChange={(e) => setEditTarget((t) => t && { ...t, child_name: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">けがの種類</label>
+                <select
+                  value={editTarget.injury_type_id}
+                  onChange={(e) => setEditTarget((t) => t && { ...t, injury_type_id: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value={0}>-- 選択してください --</option>
+                  {injuryTypes.map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">事故内容</label>
+                <textarea
+                  value={editTarget.description}
+                  onChange={(e) => setEditTarget((t) => t && { ...t, description: e.target.value })}
+                  rows={4}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                />
+              </div>
+
+              {editError && <p className="text-sm text-red-600">{editError}</p>}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditTarget(null)}
+                  className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded border border-gray-300"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
