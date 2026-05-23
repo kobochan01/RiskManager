@@ -35,10 +35,10 @@ function App(): JSX.Element {
       </div>
 
       <main className="flex-1 overflow-y-auto">
-        <div className={mainTab !== 'form' ? 'hidden' : ''}><IncidentForm /></div>
-        <div className={mainTab !== 'list' ? 'hidden' : ''}><IncidentList /></div>
-        <div className={mainTab !== 'master' ? 'hidden' : ''}><MasterPage /></div>
-        <div className={mainTab !== 'dashboard' ? 'hidden' : ''}><DashboardPage /></div>
+        {mainTab === 'form' && <IncidentForm />}
+        {mainTab === 'list' && <IncidentList />}
+        {mainTab === 'master' && <MasterPage />}
+        {mainTab === 'dashboard' && <DashboardPage />}
       </main>
     </div>
   )

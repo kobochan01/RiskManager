@@ -43,6 +43,6 @@ export async function buildPdfDocument(pageElements: HTMLElement[]): Promise<num
 
 export function buildPdfFileName(from: string): string {
   if (!from) return 'report.pdf'
-  const yyyymm = from.slice(0, 7).replace('-', '')
+  const yyyymm = from.slice(0, 4) + from.slice(5, 7)
   return `report_${yyyymm}.pdf`
 }
