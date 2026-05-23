@@ -46,6 +46,7 @@
 | 20 | [#41](https://github.com/kobochan01/RiskManager/issues/41) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ 完了 |
 | 21 | [#49](https://github.com/kobochan01/RiskManager/issues/49) | SQLite の外部キー制約を有効化する（PRAGMA foreign_keys = ON） | ✅ 完了 |
 | 22 | [#51](https://github.com/kobochan01/RiskManager/issues/51) | P1/P2 セキュリティ・バグ修正（IPC allowlist, ゾンビDOM, 削除確認） | ✅ 完了 |
+| 23 | [#53](https://github.com/kobochan01/RiskManager/issues/53) | PDF出力の画質向上（scale:2 + PNG形式） | ✅ 完了 |
 
 ---
 
@@ -376,3 +377,18 @@ CREATE TABLE settings (
 
 - **IPC allowlist の実装方針**: `as const` で型を絞った `ALLOWED_CHANNELS` 配列を定義し、`(ALLOWED_CHANNELS as readonly string[]).includes(channel)` でチェック。型推論を活かしつつランタイム検証も行う
 - **ゾンビDOM修正のアプローチ**: `root` を `let` で外側に宣言し `finally` でクリーンアップする方式を採用。`container` 生成を `try` 外に出すことで、エラー・正常終了いずれでも DOM が残らないことを保証
+
+---
+
+## Issue #53 作業記録（2026-05-23）
+
+### やったこと
+
+- `src/renderer/src/utils/pdfExport.ts` の `html2canvas` オプションを変更
+  - `scale: 1` → `scale: 2`（2x 解像度で描画）
+  - `image/jpeg, 0.95` → `image/png`（可逆圧縮に変更）
+
+### 技術的な決定事項
+
+- **scale:2 の影響**: canvas サイズが縦横2倍になるため、メモリ使用量は約4倍になるが、ページ数が少ない（2〜3ページ）ため実用上問題なし
+- **PNG 選択の理由**: グラフのラベル文字や罫線は高周波成分を含むため JPEG の離散コサイン変換でブロックノイズが出やすい。PNG の可逆圧縮で劣化を回避
