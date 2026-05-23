@@ -47,6 +47,7 @@
 | 21 | [#49](https://github.com/kobochan01/RiskManager/issues/49) | SQLite の外部キー制約を有効化する（PRAGMA foreign_keys = ON） | ✅ 完了 |
 | 22 | [#51](https://github.com/kobochan01/RiskManager/issues/51) | P1/P2 セキュリティ・バグ修正（IPC allowlist, ゾンビDOM, 削除確認） | ✅ 完了 |
 | 23 | [#53](https://github.com/kobochan01/RiskManager/issues/53) | PDF出力の画質向上（scale:2 + PNG形式） | ✅ 完了 |
+| 24 | [#55](https://github.com/kobochan01/RiskManager/issues/55) | IncidentList のサーバーサイドフィルタリングと日付形式混在バグの修正 | ✅ 完了 |
 
 ---
 
@@ -202,6 +203,7 @@ CREATE TABLE settings (
 | `feature/23-dashboard-period-selector` | - | ダッシュボード集計期間の選択式変更（月別・四半期・年別） | ✅ マージ済み |
 | `feature/41-restrict-time-selection-07-18` | [#42](https://github.com/kobochan01/RiskManager/pull/42) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ マージ済み |
 | `fix/49-foreign-keys-pragma` | [#50](https://github.com/kobochan01/RiskManager/pull/50) | SQLite の外部キー制約を有効化する（PRAGMA foreign_keys = ON） | ✅ マージ済み |
+| `fix/55-server-side-filter-and-date-format` | [#56](https://github.com/kobochan01/RiskManager/pull/56) | IncidentList のサーバーサイドフィルタリングと日付形式混在バグの修正 | ✅ マージ済み |
 
 ---
 
@@ -392,3 +394,21 @@ CREATE TABLE settings (
 
 - **scale:2 の影響**: canvas サイズが縦横2倍になるため、メモリ使用量は約4倍になるが、ページ数が少ない（2〜3ページ）ため実用上問題なし
 - **PNG 選択の理由**: グラフのラベル文字や罫線は高周波成分を含むため JPEG の離散コサイン変換でブロックノイズが出やすい。PNG の可逆圧縮で劣化を回避
+
+---
+
+## Issue #55 作業記録（2026-05-23）
+
+### やったこと
+
+- `src/main/ipc.ts` の `db:get-incidents` ハンドラにオプショナルフィルター（keyword, classId, injuryTypeId, dateFrom, dateTo）を追加。動的 WHERE 句を安全なパラメータバインドで構築
+- `src/renderer/src/components/IncidentList.tsx` のロード処理を分離：`loadMasters()`（初回マウント時のみ）と `loadIncidents(filters)`（フィルター変更のたびに実行）
+- クライアントサイドの `rows.filter()` を削除（P2-⑦）
+- `openEdit` 内の `occurred_at.slice(0, 16)` を `occurred_at.replace(' ', 'T').slice(0, 16)` に変更し、スペース区切りの旧形式データでも編集モーダルの時刻セレクトが正しく初期化されるよう修正（P2-⑧）
+- `src/main/db.test.ts` にフィルタリング SQL のテスト（8ケース）と `occurred_at` 正規化テスト（2ケース）を追加（計19テスト全パス）
+
+### 技術的な決定事項
+
+- **フィルター方式**: `db:get-incidents` を拡張し `db:get-incidents-filtered`（DashboardPage 用）はそのまま維持。責務が異なるため分けた
+- **keyword フィルターの一致方式**: クライアントサイドの `includes()` から `LIKE %keyword%` に変更。部分一致の意味は同じだが大文字小文字の扱いが SQLite の `LIKE` になる（日本語では実質同じ）
+- **旧形式データ対応**: `date(i.occurred_at)` で日付部分のみ抽出するため、スペース区切り（`2026-05-23 09:30:00`）でも T 区切り（`2026-05-23T09:30`）でも日付フィルターが正しく動作する
