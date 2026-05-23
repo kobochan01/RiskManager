@@ -312,3 +312,34 @@ CREATE TABLE settings (
 - **selectedYear の意味**: 月別では暦年、四半期・年別では年度開始年（2026→2026年度＝2026-04-01〜2027-03-31）
 - **年ドロップダウンの範囲**: 現在年/年度から4年前まで5件を表示
 - **IPC変更なし**: `db:get-stats` の `{dateFrom, dateTo}` インターフェースはそのまま活用
+
+---
+
+## Issue #44 作業記録（2026-05-23）
+
+### やったこと
+
+- `scripts/seed.mjs` を新規作成（テスト用シードデータ生成スクリプト）
+  - `randDateTime()` をローカル日付コンポーネント直接組み立てに変更（`toISOString()` 廃止）
+  - 出力形式をフォームと同じ `YYYY-MM-DDTHH:MM` に統一
+  - 時間帯を `07〜18` に変更（Issue #41 のフォーム制限と整合）
+  - `main()` の先頭で既存 incidents を全件削除してからシード（マスタデータは保持）
+
+### 技術的な決定事項
+
+- **UTC vs ローカル時刻**: `d.toISOString()` は UTC 変換するため JST 業務時間（07〜17時）が `22:00〜08:00 UTC` になりグラフ集計（`strftime('%H', occurred_at)` が 07〜18 のみヒット）がずれる。ローカル成分（`d.getFullYear()` 等）を直接文字列化することで回避
+- **seed のみの修正**: アプリ本体の INSERT/UPDATE は既にフォームのローカル時刻をそのままDBに保存しているため変更不要
+
+---
+
+## Issue #46 作業記録（2026-05-23）
+
+### やったこと
+
+- `src/preload/index.ts` の `invoke` 関数を1行修正
+
+### 技術的な決定事項
+
+- **原因**: `invoke: (channel: string, data?: unknown) => ipcRenderer.invoke(channel, data)` は単一引数しか渡せないため、`MasterPage` が `window.api.invoke(channel, id, name)` と2引数を渡すと `name` が捨てられる
+- **影響**: `name = undefined → SQL NOT NULL 違反` となりマスタ管理（クラス・場所・けが種類）の名前変更が常に失敗していた。エラーメッセージも「同じ名前がすでに登録されています」と誤表示されていた
+- **修正**: `...args: unknown[]` の可変長引数にすることで `env.d.ts` の型宣言と実装を一致させた
