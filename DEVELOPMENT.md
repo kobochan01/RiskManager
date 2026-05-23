@@ -44,6 +44,7 @@
 | 18 | [#37](https://github.com/kobochan01/RiskManager/issues/37) | recharts v3の自動ラベル間引きを防ぎ時間帯別グラフ横軸に全12ラベルを表示 | ✅ 完了 |
 | 19 | [#39](https://github.com/kobochan01/RiskManager/issues/39) | Stopフックでコードコミット時のmdファイル更新チェックを自動化 | ✅ 完了 |
 | 20 | [#41](https://github.com/kobochan01/RiskManager/issues/41) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ 完了 |
+| 21 | [#49](https://github.com/kobochan01/RiskManager/issues/49) | SQLite の外部キー制約を有効化する（PRAGMA foreign_keys = ON） | ✅ 完了 |
 
 ---
 
@@ -198,6 +199,7 @@ CREATE TABLE settings (
 | `feature/21-freeword-inputs` | [#22](https://github.com/kobochan01/RiskManager/pull/22) | クラス・けがの種類フリーワード + 園児名オートコンプリート | ✅ マージ済み |
 | `feature/23-dashboard-period-selector` | - | ダッシュボード集計期間の選択式変更（月別・四半期・年別） | ✅ マージ済み |
 | `feature/41-restrict-time-selection-07-18` | [#42](https://github.com/kobochan01/RiskManager/pull/42) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ マージ済み |
+| `fix/49-foreign-keys-pragma` | [#50](https://github.com/kobochan01/RiskManager/pull/50) | SQLite の外部キー制約を有効化する（PRAGMA foreign_keys = ON） | ✅ マージ済み |
 
 ---
 
@@ -343,3 +345,17 @@ CREATE TABLE settings (
 - **原因**: `invoke: (channel: string, data?: unknown) => ipcRenderer.invoke(channel, data)` は単一引数しか渡せないため、`MasterPage` が `window.api.invoke(channel, id, name)` と2引数を渡すと `name` が捨てられる
 - **影響**: `name = undefined → SQL NOT NULL 違反` となりマスタ管理（クラス・場所・けが種類）の名前変更が常に失敗していた。エラーメッセージも「同じ名前がすでに登録されています」と誤表示されていた
 - **修正**: `...args: unknown[]` の可変長引数にすることで `env.d.ts` の型宣言と実装を一致させた
+
+---
+
+## Issue #49 作業記録（2026-05-23）
+
+### やったこと
+
+- `src/main/db.ts` の `initDb()` に `db.run('PRAGMA foreign_keys = ON')` を1行追加
+- `src/main/db.test.ts` を新規作成（PRAGMA ON/OFF での FK 制約動作を3ケースで検証）
+
+### 技術的な決定事項
+
+- **PRAGMA のタイミング**: `db.run(SCHEMA)` の直後に設定。sql.js はインメモリDBのため、ファイルから読み込むたびに PRAGMA はリセットされる。毎回 `initDb()` で設定する必要がある
+- **テスト方針**: `initDb()` は Electron の `app.getPath()` に依存するため直接テスト不可。代わりに sql.js を直接インポートして「PRAGMA あり/なし」で FK 違反の挙動が変わることを確認するテストを作成
