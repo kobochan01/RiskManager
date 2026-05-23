@@ -56,6 +56,16 @@ npm run dev
 - `better-sqlite3` ではなく `sql.js`（WASM版）を採用しています。Python / Visual Studio Build Tools のインストールは不要です。
 - Windows環境で開発する場合、PowerShellのセッション変数 `ELECTRON_RUN_AS_NODE` が残留するとアプリが起動しない場合があります。`dev` スクリプトに対策済みです。
 
+### テスト用シードデータ
+
+開発・動作確認用に100件のサンプルインシデントを投入できます。
+
+```bash
+node scripts/seed.mjs
+```
+
+> **注意**: 実行すると既存の `incidents` テーブルが全件削除されてからシードデータが挿入されます。本番データのある環境では実行しないでください。
+
 ---
 
 ## ドキュメント
