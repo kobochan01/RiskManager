@@ -115,6 +115,10 @@ export default function DashboardPage(): JSX.Element {
   async function handleExportPdf(): Promise<void> {
     if (!stats) return
     setExporting(true)
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const pdfRef = { current: null as PdfContainerHandle | null }
+    let root: ReturnType<typeof createRoot> | null = null
     try {
       const { from: dateFrom, to: dateTo } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
 
@@ -123,14 +127,9 @@ export default function DashboardPage(): JSX.Element {
         window.api.invoke('db:get-matrix', { dateFrom, dateTo }) as Promise<MatrixData>,
       ])
 
-      // PdfContainerを画面外DOMに一時マウント
-      const container = document.createElement('div')
-      document.body.appendChild(container)
-      const pdfRef = { current: null as PdfContainerHandle | null }
-
+      root = createRoot(container)
       await new Promise<void>((resolve) => {
-        const root = createRoot(container)
-        root.render(
+        root!.render(
           <PdfContainer
             ref={(handle) => { pdfRef.current = handle }}
             incidents={incidents}
@@ -145,13 +144,11 @@ export default function DashboardPage(): JSX.Element {
 
       const pageElements = pdfRef.current?.getPageElements() ?? []
       const buffer = await buildPdfDocument(pageElements)
-
-      // DOMクリーンアップ
-      document.body.removeChild(container)
-
       const defaultName = buildPdfFileName(dateFrom)
       await window.api.invoke('pdf:export-save', { buffer, defaultName })
     } finally {
+      root?.unmount()
+      document.body.removeChild(container)
       setExporting(false)
     }
   }

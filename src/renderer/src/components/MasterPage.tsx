@@ -52,6 +52,7 @@ export default function MasterPage(): JSX.Element {
   }
 
   async function handleDelete(id: number): Promise<void> {
+    if (!window.confirm('このマスタを削除してもよいですか？')) return
     await window.api.invoke(IPC[activeTab].delete, id)
     await loadItems(activeTab)
   }

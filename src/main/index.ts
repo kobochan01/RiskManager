@@ -12,6 +12,8 @@ function createWindow(): void {
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+      // sql.js の WASM ファイルを Node.js fs で読み込むために必要。
+      // better-sqlite3 への移行が完了したら true に戻すこと。
       sandbox: false
     }
   })
