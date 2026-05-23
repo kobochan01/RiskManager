@@ -88,6 +88,7 @@ export async function initDb(): Promise<void> {
   }
 
   db.run(SCHEMA)
+  db.run('PRAGMA foreign_keys = ON')
   migrateDb(db)
   persistDb()
 }
