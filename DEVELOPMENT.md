@@ -48,6 +48,7 @@
 | 22 | [#51](https://github.com/kobochan01/RiskManager/issues/51) | P1/P2 セキュリティ・バグ修正（IPC allowlist, ゾンビDOM, 削除確認） | ✅ 完了 |
 | 23 | [#53](https://github.com/kobochan01/RiskManager/issues/53) | PDF出力の画質向上（scale:2 + PNG形式） | ✅ 完了 |
 | 24 | [#55](https://github.com/kobochan01/RiskManager/issues/55) | IncidentList のサーバーサイドフィルタリングと日付形式混在バグの修正 | ✅ 完了 |
+| 25 | [#57](https://github.com/kobochan01/RiskManager/issues/57) | P3 テストカバレッジ改善（getPeriodRange 切り出し・境界値テスト・migrateDb テスト） | ✅ 完了 |
 
 ---
 

@@ -189,6 +189,103 @@ describe('db:get-incidents フィルタリング', () => {
   })
 })
 
+// migrateDb のロジックをテスト用に再現（db.ts は electron に依存するため直接 import 不可）
+function migrateDb(database: Database): void {
+  const cols = database.exec('PRAGMA table_info(incidents)')[0]?.values.map((r) => r[1]) ?? []
+  if (cols.includes('location') && !cols.includes('location_id')) {
+    database.run('ALTER TABLE incidents ADD COLUMN location_id INTEGER NOT NULL DEFAULT 0')
+    database.run('INSERT OR IGNORE INTO locations (name) SELECT DISTINCT location FROM incidents')
+    database.run(
+      'UPDATE incidents SET location_id = (SELECT id FROM locations WHERE name = incidents.location)'
+    )
+  }
+}
+
+const OLD_SCHEMA = `
+CREATE TABLE classes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+CREATE TABLE injury_types (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+CREATE TABLE locations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+CREATE TABLE incidents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  occurred_at DATETIME NOT NULL,
+  location TEXT NOT NULL,
+  class_id INTEGER NOT NULL,
+  child_name TEXT NOT NULL,
+  injury_type_id INTEGER NOT NULL,
+  description TEXT NOT NULL
+);
+`
+
+describe('migrateDb', () => {
+  it('旧形式DB: location_id 列が追加され locations テーブルに値が移る', () => {
+    const db = new SQL.Database()
+    db.run(OLD_SCHEMA)
+    db.run("INSERT INTO classes VALUES (1, '年少')")
+    db.run("INSERT INTO injury_types VALUES (1, '打撲')")
+    db.run(`INSERT INTO incidents (occurred_at, location, class_id, child_name, injury_type_id, description)
+            VALUES ('2026-05-10T09:00', '園庭', 1, '田中一郎', 1, '転倒')`)
+
+    migrateDb(db)
+
+    // location_id 列が追加されている
+    const cols = db.exec('PRAGMA table_info(incidents)')[0].values.map((r) => r[1])
+    expect(cols).toContain('location_id')
+
+    // locations テーブルに「園庭」が登録されている
+    const locations = db.exec("SELECT name FROM locations WHERE name = '園庭'")[0]?.values
+    expect(locations).toHaveLength(1)
+
+    // incidents の location_id が正しく設定されている
+    const locationId = db.exec('SELECT id FROM locations WHERE name = \'園庭\'')[0].values[0][0]
+    const rows = db.exec('SELECT location_id FROM incidents')[0].values
+    expect(rows[0][0]).toBe(locationId)
+  })
+
+  it('旧形式DB: location に重複がある場合でも INSERT OR IGNORE で locations が重複しない', () => {
+    const db = new SQL.Database()
+    db.run(OLD_SCHEMA)
+    db.run("INSERT INTO classes VALUES (1, '年少')")
+    db.run("INSERT INTO injury_types VALUES (1, '打撲')")
+    db.run(`INSERT INTO incidents (occurred_at, location, class_id, child_name, injury_type_id, description)
+            VALUES ('2026-05-10T09:00', '園庭', 1, '田中一郎', 1, '転倒'),
+                   ('2026-05-11T10:00', '園庭', 1, '鈴木花子', 1, '擦り傷')`)
+
+    migrateDb(db)
+
+    const locations = db.exec("SELECT name FROM locations WHERE name = '園庭'")[0]?.values
+    expect(locations).toHaveLength(1)
+  })
+
+  it('新形式DB（location_id 列あり）: migrateDb は何もしない（冪等性）', () => {
+    const db = new SQL.Database()
+    db.run(`
+      CREATE TABLE classes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+      CREATE TABLE injury_types (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+      CREATE TABLE locations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+      CREATE TABLE incidents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        occurred_at DATETIME NOT NULL,
+        location_id INTEGER NOT NULL DEFAULT 0,
+        class_id INTEGER NOT NULL,
+        child_name TEXT NOT NULL,
+        injury_type_id INTEGER NOT NULL,
+        description TEXT NOT NULL
+      );
+    `)
+    db.run("INSERT INTO locations VALUES (1, '園庭')")
+    db.run("INSERT INTO classes VALUES (1, '年少')")
+    db.run("INSERT INTO injury_types VALUES (1, '打撲')")
+    db.run(`INSERT INTO incidents (occurred_at, location_id, class_id, child_name, injury_type_id, description)
+            VALUES ('2026-05-10T09:00', 1, 1, '田中一郎', 1, '転倒')`)
+
+    migrateDb(db)
+
+    // locations テーブルが変わっていない
+    const locations = db.exec('SELECT * FROM locations')[0]?.values
+    expect(locations).toHaveLength(1)
+  })
+})
+
 describe('occurred_at 正規化（openEdit 内の処理）', () => {
   it('スペース区切りの日時を T 区切りに正規化して16文字にスライスする', () => {
     const raw = '2026-05-23 09:30:00'
