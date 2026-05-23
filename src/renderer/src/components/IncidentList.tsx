@@ -45,42 +45,24 @@ export default function IncidentList(): JSX.Element {
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
   const [editError, setEditError] = useState('')
 
-  async function loadAll(): Promise<void> {
-    const [incidents, locs, cls, inj] = await Promise.all([
-      window.api.invoke('db:get-incidents'),
+  async function loadMasters(): Promise<void> {
+    const [locs, cls, inj] = await Promise.all([
       window.api.invoke('db:get-locations'),
       window.api.invoke('db:get-classes'),
       window.api.invoke('db:get-injury-types'),
     ])
-    setRows(incidents as IncidentRow[])
     setLocations(locs as MasterItem[])
     setClasses(cls as MasterItem[])
     setInjuryTypes(inj as MasterItem[])
   }
 
-  useEffect(() => { loadAll() }, [])
+  async function loadIncidents(currentFilters: Filters): Promise<void> {
+    const incidents = await window.api.invoke('db:get-incidents', currentFilters)
+    setRows(incidents as IncidentRow[])
+  }
 
-  const filtered = rows.filter((r) => {
-    const [, occurredAt, , className, childName, injuryTypeName, description] = r
-    if (
-      filters.keyword &&
-      !childName.includes(filters.keyword) &&
-      !description.includes(filters.keyword)
-    ) {
-      return false
-    }
-    if (filters.classId) {
-      const cls = classes.find(([id]) => String(id) === filters.classId)
-      if (!cls || cls[1] !== className) return false
-    }
-    if (filters.injuryTypeId) {
-      const inj = injuryTypes.find(([id]) => String(id) === filters.injuryTypeId)
-      if (!inj || inj[1] !== injuryTypeName) return false
-    }
-    if (filters.dateFrom && occurredAt < filters.dateFrom) return false
-    if (filters.dateTo && occurredAt > filters.dateTo + 'T23:59:59') return false
-    return true
-  })
+  useEffect(() => { loadMasters() }, [])
+  useEffect(() => { loadIncidents(filters) }, [filters])
 
   const resetFilters = (): void => {
     setFilters({ keyword: '', classId: '', injuryTypeId: '', dateFrom: '', dateTo: '' })
@@ -96,7 +78,7 @@ export default function IncidentList(): JSX.Element {
     const inj = injuryTypes.find(([, n]) => n === injuryTypeName)
     setEditTarget({
       id,
-      occurred_at: occurred_at.slice(0, 16),
+      occurred_at: occurred_at.replace(' ', 'T').slice(0, 16),
       location_id: loc?.[0] ?? 0,
       class_id: cls?.[0] ?? 0,
       child_name: childName,
@@ -124,7 +106,7 @@ export default function IncidentList(): JSX.Element {
     try {
       await window.api.invoke('db:update-incident', editTarget)
       setEditTarget(null)
-      await loadAll()
+      await loadIncidents(filters)
     } catch {
       setEditError('更新に失敗しました')
     }
@@ -134,7 +116,7 @@ export default function IncidentList(): JSX.Element {
     if (!window.confirm('この報告を削除してもよいですか？')) return
     await window.api.invoke('db:delete-incident', id)
     setExpandedId(null)
-    await loadAll()
+    await loadIncidents(filters)
   }
 
   return (
@@ -213,13 +195,13 @@ export default function IncidentList(): JSX.Element {
 
       {/* 件数表示 */}
       <p className="text-sm text-gray-500 mb-2">
-        {filtered.length} 件{hasFilter && `（全 ${rows.length} 件中）`}
+        {rows.length} 件{hasFilter && '（フィルター適用中）'}
       </p>
 
       {/* 一覧テーブル */}
-      {filtered.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
-          {rows.length === 0 ? '報告データがありません。' : '条件に一致する報告がありません。'}
+          {hasFilter ? '条件に一致する報告がありません。' : '報告データがありません。'}
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -236,7 +218,7 @@ export default function IncidentList(): JSX.Element {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((r) => {
+              {rows.map((r) => {
                 const [id, occurredAt, locationName, className, childName, injuryTypeName, description] = r
                 const isExpanded = expandedId === id
                 const shortDesc = description.length > 50 ? description.slice(0, 50) + '…' : description
