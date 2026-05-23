@@ -45,6 +45,7 @@
 | 19 | [#39](https://github.com/kobochan01/RiskManager/issues/39) | Stopフックでコードコミット時のmdファイル更新チェックを自動化 | ✅ 完了 |
 | 20 | [#41](https://github.com/kobochan01/RiskManager/issues/41) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ 完了 |
 | 21 | [#49](https://github.com/kobochan01/RiskManager/issues/49) | SQLite の外部キー制約を有効化する（PRAGMA foreign_keys = ON） | ✅ 完了 |
+| 22 | [#51](https://github.com/kobochan01/RiskManager/issues/51) | P1/P2 セキュリティ・バグ修正（IPC allowlist, ゾンビDOM, 削除確認） | ✅ 完了 |
 
 ---
 
@@ -359,3 +360,19 @@ CREATE TABLE settings (
 
 - **PRAGMA のタイミング**: `db.run(SCHEMA)` の直後に設定。sql.js はインメモリDBのため、ファイルから読み込むたびに PRAGMA はリセットされる。毎回 `initDb()` で設定する必要がある
 - **テスト方針**: `initDb()` は Electron の `app.getPath()` に依存するため直接テスト不可。代わりに sql.js を直接インポートして「PRAGMA あり/なし」で FK 違反の挙動が変わることを確認するテストを作成
+
+---
+
+## Issue #51 作業記録（2026-05-23）
+
+### やったこと
+
+- `src/preload/index.ts` に `ALLOWED_CHANNELS` 定数を追加し、allowlist 外のチャンネルは `Error` をスローするよう `invoke` を変更（P1-②）
+- `src/main/index.ts` の `sandbox: false` に sql.js WASM 依存の理由コメントと移行時注記を追記（P1-③）
+- `src/renderer/src/components/DashboardPage.tsx` の PDF 生成処理を修正。`container`・`root` を `try` 外で宣言し `finally` で `root.unmount()` と `removeChild` を実行することでエラー時のゾンビDOM を防止（P2-⑤）
+- `src/renderer/src/components/MasterPage.tsx` の `handleDelete` に `window.confirm` を追加して誤削除を防止（P2-⑥）
+
+### 技術的な決定事項
+
+- **IPC allowlist の実装方針**: `as const` で型を絞った `ALLOWED_CHANNELS` 配列を定義し、`(ALLOWED_CHANNELS as readonly string[]).includes(channel)` でチェック。型推論を活かしつつランタイム検証も行う
+- **ゾンビDOM修正のアプローチ**: `root` を `let` で外側に宣言し `finally` でクリーンアップする方式を採用。`container` 生成を `try` 外に出すことで、エラー・正常終了いずれでも DOM が残らないことを保証
