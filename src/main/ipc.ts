@@ -67,7 +67,38 @@ export function registerIpcHandlers(): void {
   })
 
   // ---- ヒヤリハット報告 ----
-  ipcMain.handle('db:get-incidents', () => {
+  ipcMain.handle('db:get-incidents', (_e, filters?: {
+    keyword?: string
+    classId?: string
+    injuryTypeId?: string
+    dateFrom?: string
+    dateTo?: string
+  }) => {
+    const conditions: string[] = []
+    const params: (string | number)[] = []
+
+    if (filters?.keyword) {
+      conditions.push('(i.child_name LIKE ? OR i.description LIKE ?)')
+      params.push(`%${filters.keyword}%`, `%${filters.keyword}%`)
+    }
+    if (filters?.classId) {
+      conditions.push('c.id = ?')
+      params.push(Number(filters.classId))
+    }
+    if (filters?.injuryTypeId) {
+      conditions.push('it.id = ?')
+      params.push(Number(filters.injuryTypeId))
+    }
+    if (filters?.dateFrom) {
+      conditions.push('date(i.occurred_at) >= ?')
+      params.push(filters.dateFrom)
+    }
+    if (filters?.dateTo) {
+      conditions.push('date(i.occurred_at) <= ?')
+      params.push(filters.dateTo)
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
     const rows = getDb().exec(`
       SELECT
         i.id, i.occurred_at,
@@ -80,8 +111,9 @@ export function registerIpcHandlers(): void {
       JOIN locations   l  ON l.id  = i.location_id
       JOIN classes     c  ON c.id  = i.class_id
       JOIN injury_types it ON it.id = i.injury_type_id
+      ${where}
       ORDER BY i.occurred_at DESC
-    `)
+    `, params)
     return rows[0]?.values ?? []
   })
 
