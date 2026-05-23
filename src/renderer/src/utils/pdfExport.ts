@@ -29,12 +29,12 @@ export async function buildPdfDocument(pageElements: HTMLElement[]): Promise<num
   for (let i = 0; i < pageElements.length; i++) {
     if (i > 0) pdf.addPage([1123, 794], 'landscape')
     const canvas = await html2canvas(pageElements[i], {
-      scale: 1,
+      scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
     })
-    const imgData = canvas.toDataURL('image/jpeg', 0.95)
-    pdf.addImage(imgData, 'JPEG', 0, 0, 1123, 794)
+    const imgData = canvas.toDataURL('image/png')
+    pdf.addImage(imgData, 'PNG', 0, 0, 1123, 794)
   }
 
   const arrayBuffer = pdf.output('arraybuffer')
