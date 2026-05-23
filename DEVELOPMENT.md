@@ -49,6 +49,7 @@
 | 23 | [#53](https://github.com/kobochan01/RiskManager/issues/53) | PDF出力の画質向上（scale:2 + PNG形式） | ✅ 完了 |
 | 24 | [#55](https://github.com/kobochan01/RiskManager/issues/55) | IncidentList のサーバーサイドフィルタリングと日付形式混在バグの修正 | ✅ 完了 |
 | 25 | [#57](https://github.com/kobochan01/RiskManager/issues/57) | P3 テストカバレッジ改善（getPeriodRange 切り出し・境界値テスト・migrateDb テスト） | ✅ 完了 |
+| 26 | [#60](https://github.com/kobochan01/RiskManager/issues/60) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ 完了 |
 
 ---
 
@@ -205,6 +206,8 @@ CREATE TABLE settings (
 | `feature/41-restrict-time-selection-07-18` | [#42](https://github.com/kobochan01/RiskManager/pull/42) | 報告入力の時間選択肢を07時〜18時59分に制限する | ✅ マージ済み |
 | `fix/49-foreign-keys-pragma` | [#50](https://github.com/kobochan01/RiskManager/pull/50) | SQLite の外部キー制約を有効化する（PRAGMA foreign_keys = ON） | ✅ マージ済み |
 | `fix/55-server-side-filter-and-date-format` | [#56](https://github.com/kobochan01/RiskManager/pull/56) | IncidentList のサーバーサイドフィルタリングと日付形式混在バグの修正 | ✅ マージ済み |
+| `test/57-improve-test-coverage` | [#58](https://github.com/kobochan01/RiskManager/pull/58) | P3 テストカバレッジ改善（getPeriodRange 切り出し・境界値テスト・migrateDb テスト） | ✅ マージ済み |
+| `chore/60-p4-code-quality-improvements` | [#61](https://github.com/kobochan01/RiskManager/pull/61) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ マージ済み |
 
 ---
 
@@ -413,3 +416,18 @@ CREATE TABLE settings (
 - **フィルター方式**: `db:get-incidents` を拡張し `db:get-incidents-filtered`（DashboardPage 用）はそのまま維持。責務が異なるため分けた
 - **keyword フィルターの一致方式**: クライアントサイドの `includes()` から `LIKE %keyword%` に変更。部分一致の意味は同じだが大文字小文字の扱いが SQLite の `LIKE` になる（日本語では実質同じ）
 - **旧形式データ対応**: `date(i.occurred_at)` で日付部分のみ抽出するため、スペース区切り（`2026-05-23 09:30:00`）でも T 区切り（`2026-05-23T09:30`）でも日付フィルターが正しく動作する
+
+---
+
+## Issue #60 作業記録（2026-05-23）
+
+### やったこと
+
+- `src/renderer/src/utils/pdfExport.ts:46` の `from.slice(0, 7).replace('-', '')` を `from.slice(0, 4) + from.slice(5, 7)` に変更（P4-10）
+- `src/renderer/src/App.tsx` のタブ表示を `hidden` クラスから条件付きレンダリング（`&&`）に変更（P4-11）
+
+### 技術的な決定事項
+
+- **buildPdfFileName の変更理由**: `replace('-', '')` は「どこの文字を消しているか」が不明瞭で、入力形式を知らないと読めない。スライスインデックスで直接位置を指定することで `YYYY-MM-DD` 形式であることを自明にした
+- **条件付きレンダリングのトレードオフ**: `hidden` クラス方式は全タブが常時マウントされ、起動時に4コンポーネント分の `useEffect`（IPC 呼び出し）が同時に走る。`&&` 方式に変更することでアクティブなタブのみマウントされるよう改善した。ただし、タブを切り替えるとコンポーネントがアンマウントされるため、IncidentForm の入力途中状態はリセットされる（README の「タブ切り替えでも入力内容を保持」の記述も合わせて削除）
+- **既存テスト**: `buildPdfFileName` のテスト5件・全体19件でリグレッションなし
