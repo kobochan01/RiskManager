@@ -50,6 +50,7 @@
 | 24 | [#55](https://github.com/kobochan01/RiskManager/issues/55) | IncidentList のサーバーサイドフィルタリングと日付形式混在バグの修正 | ✅ 完了 |
 | 25 | [#57](https://github.com/kobochan01/RiskManager/issues/57) | P3 テストカバレッジ改善（getPeriodRange 切り出し・境界値テスト・migrateDb テスト） | ✅ 完了 |
 | 26 | [#60](https://github.com/kobochan01/RiskManager/issues/60) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ 完了 |
+| 27 | [#64](https://github.com/kobochan01/RiskManager/issues/64) | インシデント登録が失敗する2つのバグを修正（occurredAt未定義・DBマイグレーション不備） | ✅ 完了 |
 
 ---
 
@@ -208,6 +209,7 @@ CREATE TABLE settings (
 | `fix/55-server-side-filter-and-date-format` | [#56](https://github.com/kobochan01/RiskManager/pull/56) | IncidentList のサーバーサイドフィルタリングと日付形式混在バグの修正 | ✅ マージ済み |
 | `test/57-improve-test-coverage` | [#58](https://github.com/kobochan01/RiskManager/pull/58) | P3 テストカバレッジ改善（getPeriodRange 切り出し・境界値テスト・migrateDb テスト） | ✅ マージ済み |
 | `chore/60-p4-code-quality-improvements` | [#61](https://github.com/kobochan01/RiskManager/pull/61) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ マージ済み |
+| `fix/64-incident-registration-failure` | [#65](https://github.com/kobochan01/RiskManager/pull/65) | インシデント登録が失敗する2つのバグを修正 | ✅ マージ済み |
 
 ---
 
@@ -431,3 +433,17 @@ CREATE TABLE settings (
 - **buildPdfFileName の変更理由**: `replace('-', '')` は「どこの文字を消しているか」が不明瞭で、入力形式を知らないと読めない。スライスインデックスで直接位置を指定することで `YYYY-MM-DD` 形式であることを自明にした
 - **条件付きレンダリングのトレードオフ**: `hidden` クラス方式は全タブが常時マウントされ、起動時に4コンポーネント分の `useEffect`（IPC 呼び出し）が同時に走る。`&&` 方式に変更することでアクティブなタブのみマウントされるよう改善した。ただし、タブを切り替えるとコンポーネントがアンマウントされるため、IncidentForm の入力途中状態はリセットされる（README の「タブ切り替えでも入力内容を保持」の記述も合わせて削除）
 - **既存テスト**: `buildPdfFileName` のテスト5件・全体19件でリグレッションなし
+
+---
+
+## Issue #64 作業記録（2026-05-28）
+
+### やったこと
+
+- `src/renderer/src/components/IncidentForm.tsx` の `handleSubmit` 内で未定義変数 `occurredAt` を参照していたバグを修正。`const occurredAt = \`${occurredDate}T${occurredHour}:${occurredMinute}\`` を定義してから使用するよう変更
+- `src/main/db.ts` の `migrateDb` に第2フェーズを追加。`location` と `location_id` が両方存在する場合、テーブルを再構築して旧 `location` カラムを除去する
+
+### 技術的な決定事項
+
+- **バグの重なり方**: `occurredAt` 未定義エラーは try-catch の外で発生していたため、フォームが無言で失敗していた。修正後にエラーが表示されるようになり、2つ目のバグ（NOT NULL制約違反）が顕在化した
+- **マイグレーション方式**: SQLite は `DROP COLUMN` を古いバージョンでサポートしないため、標準的な「新テーブル作成 → データコピー → 旧テーブル削除 → リネーム」方式でカラムを除去。テーブル再構築中は `PRAGMA foreign_keys = OFF` で FK チェックを一時停止し、完了後に再度 ON に戻す
