@@ -93,18 +93,16 @@ export default function DashboardPage(): JSX.Element {
         root!.render(
           <PdfContainer
             ref={(handle) => { pdfRef.current = handle }}
-            incidents={incidents}
             stats={stats}
-            matrix={matrix}
-            periodLabel={periodLabel}
           />
         )
         // Rechartsの描画完了を待つ
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
       })
 
-      const pageElements = pdfRef.current?.getPageElements() ?? []
-      const buffer = await buildPdfDocument(pageElements)
+      const chartElement = pdfRef.current?.getChartElement() ?? null
+      if (!chartElement) throw new Error('グラフ要素が取得できませんでした')
+      const buffer = await buildPdfDocument(chartElement, incidents, matrix, periodLabel)
       const defaultName = buildPdfFileName(dateFrom)
       await window.api.invoke('pdf:export-save', { buffer, defaultName })
     } finally {

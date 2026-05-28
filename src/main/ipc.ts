@@ -1,6 +1,8 @@
 import { ipcMain, dialog } from 'electron'
 import { writeFileSync } from 'fs'
 import { getDb, persistDb } from './db'
+import { buildPdfWithTextPages } from './pdfBuilder'
+import type { IncidentRow, MatrixData } from './pdfBuilder'
 
 export function registerIpcHandlers(): void {
   // ---- クラスマスタ ----
@@ -332,6 +334,16 @@ export function registerIpcHandlers(): void {
       locationMatrix,
       injuryMatrix,
     }
+  })
+
+  // ---- PDF生成（テキストベース） ----
+  ipcMain.handle('pdf:build', async (_e, payload: {
+    incidents: IncidentRow[]
+    matrix: MatrixData
+    periodLabel: string
+    chartImageBytes: number[]
+  }) => {
+    return buildPdfWithTextPages(payload)
   })
 
   // ---- PDF保存（バッファ受け取り） ----

@@ -21,6 +21,7 @@ const ALLOWED_CHANNELS = [
   'db:get-stats',
   'db:get-matrix',
   'pdf:export-save',
+  'pdf:build',
 ] as const
 
 contextBridge.exposeInMainWorld('api', {

@@ -1,5 +1,4 @@
 import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
 
 // [id, occurred_at, location_name, class_name, child_name, injury_type_name, description]
 export type IncidentRow = [number, string, string, string, string, string, string]
@@ -12,33 +11,39 @@ export type MatrixData = {
   injuryMatrix: Record<string, Record<string, number>>
 }
 
-const ROWS_PER_PAGE = 30
-
 export function splitIncidentsIntoPages(incidents: IncidentRow[]): IncidentRow[][] {
   if (incidents.length === 0) return [[]]
   const pages: IncidentRow[][] = []
-  for (let i = 0; i < incidents.length; i += ROWS_PER_PAGE) {
-    pages.push(incidents.slice(i, i + ROWS_PER_PAGE))
+  for (let i = 0; i < incidents.length; i += 30) {
+    pages.push(incidents.slice(i, i + 30))
   }
   return pages
 }
 
-export async function buildPdfDocument(pageElements: HTMLElement[]): Promise<number[]> {
-  const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] })
+export async function buildPdfDocument(
+  chartElement: HTMLElement,
+  incidents: IncidentRow[],
+  matrix: MatrixData,
+  periodLabel: string,
+): Promise<number[]> {
+  // グラフページだけ html2canvas で画像化
+  const canvas = await html2canvas(chartElement, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+  })
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), 'image/png')
+  )
+  const chartImageBytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
 
-  for (let i = 0; i < pageElements.length; i++) {
-    if (i > 0) pdf.addPage([1123, 794], 'landscape')
-    const canvas = await html2canvas(pageElements[i], {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-    })
-    const imgData = canvas.toDataURL('image/png')
-    pdf.addImage(imgData, 'PNG', 0, 0, 1123, 794)
-  }
-
-  const arrayBuffer = pdf.output('arraybuffer')
-  return Array.from(new Uint8Array(arrayBuffer))
+  // Main プロセスでテキストベース PDF を生成
+  return window.api.invoke('pdf:build', {
+    incidents,
+    matrix,
+    periodLabel,
+    chartImageBytes,
+  }) as Promise<number[]>
 }
 
 export function buildPdfFileName(from: string): string {

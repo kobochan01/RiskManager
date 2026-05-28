@@ -27,15 +27,13 @@ type Props = {
   timeSlots: TimeSlot[]
   injuryTypes: NameCount[]
   locations: NameCount[]
-  periodLabel: string
 }
 
-// グラフ3種を1ページにダッシュボード風レイアウトで表示
+// グラフ3種を1ページにダッシュボード風レイアウトで表示（ヘッダーなし・グラフ本体のみ）
 // 上段: 時間帯別（全幅）
 // 下段左: けがの種類別（円グラフ）  下段右: 場所別（横棒グラフ）
-export default function PdfChartDashboard({ timeSlots, injuryTypes, locations, periodLabel }: Props): JSX.Element {
+export default function PdfChartDashboard({ timeSlots, injuryTypes, locations }: Props): JSX.Element {
   const PADDING = 20
-  const HEADER_H = 36
   const GAP = 12
   const FOOTER_MARGIN = 20
 
@@ -44,7 +42,7 @@ export default function PdfChartDashboard({ timeSlots, injuryTypes, locations, p
   const topH = 260
 
   // 下段グラフ: 左右2分割、ページ内に収まる残り高さ
-  const bottomH = PAGE_H - PADDING * 2 - HEADER_H - GAP - topH - GAP - FOOTER_MARGIN
+  const bottomH = PAGE_H - PADDING * 2 - GAP - topH - GAP - FOOTER_MARGIN
   const bottomW = (topW - GAP) / 2
 
   // 場所数に応じてバーサイズ調整
@@ -66,12 +64,6 @@ export default function PdfChartDashboard({ timeSlots, injuryTypes, locations, p
         flexDirection: 'column',
       }}
     >
-      {/* ページヘッダー */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: GAP, height: HEADER_H }}>
-        <div style={{ fontSize: 15, fontWeight: 'bold' }}>ヒヤリハット集計グラフ</div>
-        <div style={{ fontSize: 10, color: '#555' }}>集計期間：{periodLabel}</div>
-      </div>
-
       {/* 上段: 時間帯別グラフ */}
       <div style={{ marginBottom: GAP }}>
         <div style={{ fontSize: 11, fontWeight: 'bold', color: '#1e40af', marginBottom: 4 }}>
