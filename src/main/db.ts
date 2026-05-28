@@ -64,13 +64,46 @@ CREATE TABLE IF NOT EXISTS settings (
 
 // incidents.location(TEXT) → location_id(INTEGER FK) への移行
 function migrateDb(database: Database): void {
-  const cols = database.exec('PRAGMA table_info(incidents)')[0]?.values.map((r) => r[1]) ?? []
+  let cols = database.exec('PRAGMA table_info(incidents)')[0]?.values.map((r) => r[1]) ?? []
+
   if (cols.includes('location') && !cols.includes('location_id')) {
     database.run('ALTER TABLE incidents ADD COLUMN location_id INTEGER NOT NULL DEFAULT 0')
     database.run('INSERT OR IGNORE INTO locations (name) SELECT DISTINCT location FROM incidents')
     database.run(
       'UPDATE incidents SET location_id = (SELECT id FROM locations WHERE name = incidents.location)'
     )
+    cols = database.exec('PRAGMA table_info(incidents)')[0]?.values.map((r) => r[1]) ?? []
+  }
+
+  // location_id への移行済みだが旧 location カラムが残っている場合、テーブルを再構築して除去
+  if (cols.includes('location') && cols.includes('location_id')) {
+    database.run('PRAGMA foreign_keys = OFF')
+    database.run(`
+      CREATE TABLE incidents_new (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        occurred_at     DATETIME NOT NULL,
+        location_id     INTEGER  NOT NULL,
+        class_id        INTEGER  NOT NULL,
+        child_name      TEXT     NOT NULL,
+        injury_type_id  INTEGER  NOT NULL,
+        description     TEXT     NOT NULL,
+        created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (location_id)    REFERENCES locations(id),
+        FOREIGN KEY (class_id)       REFERENCES classes(id),
+        FOREIGN KEY (injury_type_id) REFERENCES injury_types(id)
+      )
+    `)
+    database.run(`
+      INSERT INTO incidents_new
+        (id, occurred_at, location_id, class_id, child_name, injury_type_id, description, created_at, updated_at)
+      SELECT
+        id, occurred_at, location_id, class_id, child_name, injury_type_id, description, created_at, updated_at
+      FROM incidents
+    `)
+    database.run('DROP TABLE incidents')
+    database.run('ALTER TABLE incidents_new RENAME TO incidents')
+    database.run('PRAGMA foreign_keys = ON')
   }
 }
 

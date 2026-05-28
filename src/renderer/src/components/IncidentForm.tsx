@@ -127,6 +127,7 @@ export default function IncidentForm(): JSX.Element {
       setSubmitError('すべての項目を入力してください')
       return
     }
+    const occurredAt = `${occurredDate}T${occurredHour}:${occurredMinute}`
     const hour = new Date(occurredAt).getHours()
     if (hour < 7 || hour > 18) {
       setSubmitError('発生時刻は07:00〜18:59の範囲で入力してください')
@@ -135,7 +136,7 @@ export default function IncidentForm(): JSX.Element {
 
     try {
       await window.api.invoke('db:add-incident', {
-        occurred_at: `${occurredDate}T${occurredHour}:${occurredMinute}`,
+        occurred_at: occurredAt,
         location_id: locationId,
         class_id: classId,
         child_name: childName,
