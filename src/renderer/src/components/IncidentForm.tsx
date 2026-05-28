@@ -39,6 +39,7 @@ export default function IncidentForm(): JSX.Element {
   const [newInjuryType, setNewInjuryType] = useState('')
   const [addInjuryTypeError, setAddInjuryTypeError] = useState('')
   const [childNameHistory, setChildNameHistory] = useState<string[]>(() => loadChildNameHistory())
+  const [newChildName, setNewChildName] = useState('')
   const [submitMessage, setSubmitMessage] = useState('')
   const [submitError, setSubmitError] = useState('')
 
@@ -105,6 +106,14 @@ export default function IncidentForm(): JSX.Element {
     }
   }
 
+  function handleAddChildName(): void {
+    const name = newChildName.trim()
+    if (!name) return
+    setChildNameHistory((prev) => saveChildNameHistory(name, prev))
+    setChildName(name)
+    setNewChildName('')
+  }
+
   function handleClear(): void {
     setOccurredDate('')
     setOccurredHour('')
@@ -112,6 +121,7 @@ export default function IncidentForm(): JSX.Element {
     setLocationId(0)
     setClassId(0)
     setChildName('')
+    setNewChildName('')
     setInjuryTypeId(0)
     setDescription('')
     setSubmitMessage('')
@@ -262,18 +272,33 @@ export default function IncidentForm(): JSX.Element {
         {/* 園児名 */}
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">園児名</label>
-          <input
-            type="text"
-            list="child-name-list"
+          <select
             value={childName}
             onChange={(e) => setChildName(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <datalist id="child-name-list">
+          >
+            <option value="">-- 選択してください --</option>
             {childNameHistory.map((name) => (
-              <option key={name} value={name} />
+              <option key={name} value={name}>{name}</option>
             ))}
-          </datalist>
+          </select>
+          <div className="flex gap-2 mt-2">
+            <input
+              type="text"
+              placeholder="新しい園児名を入力"
+              value={newChildName}
+              onChange={(e) => setNewChildName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddChildName() } }}
+              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              type="button"
+              onClick={handleAddChildName}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded"
+            >
+              追加
+            </button>
+          </div>
         </div>
 
         {/* けがの種類 */}
