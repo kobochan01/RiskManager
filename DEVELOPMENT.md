@@ -51,6 +51,7 @@
 | 25 | [#57](https://github.com/kobochan01/RiskManager/issues/57) | P3 テストカバレッジ改善（getPeriodRange 切り出し・境界値テスト・migrateDb テスト） | ✅ 完了 |
 | 26 | [#60](https://github.com/kobochan01/RiskManager/issues/60) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ 完了 |
 | 27 | [#64](https://github.com/kobochan01/RiskManager/issues/64) | インシデント登録が失敗する2つのバグを修正（occurredAt未定義・DBマイグレーション不備） | ✅ 完了 |
+| 28 | [#68](https://github.com/kobochan01/RiskManager/issues/68) | 園児名入力をフリーワード履歴のプルダウン選択方式に変更する | ✅ 完了 |
 
 ---
 
@@ -210,6 +211,7 @@ CREATE TABLE settings (
 | `test/57-improve-test-coverage` | [#58](https://github.com/kobochan01/RiskManager/pull/58) | P3 テストカバレッジ改善（getPeriodRange 切り出し・境界値テスト・migrateDb テスト） | ✅ マージ済み |
 | `chore/60-p4-code-quality-improvements` | [#61](https://github.com/kobochan01/RiskManager/pull/61) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ マージ済み |
 | `fix/64-incident-registration-failure` | [#65](https://github.com/kobochan01/RiskManager/pull/65) | インシデント登録が失敗する2つのバグを修正 | ✅ マージ済み |
+| `feature/68-child-name-dropdown` | [#69](https://github.com/kobochan01/RiskManager/pull/69) | 園児名入力をフリーワード履歴のプルダウン選択方式に変更 | ✅ マージ済み |
 
 ---
 
@@ -447,3 +449,21 @@ CREATE TABLE settings (
 
 - **バグの重なり方**: `occurredAt` 未定義エラーは try-catch の外で発生していたため、フォームが無言で失敗していた。修正後にエラーが表示されるようになり、2つ目のバグ（NOT NULL制約違反）が顕在化した
 - **マイグレーション方式**: SQLite は `DROP COLUMN` を古いバージョンでサポートしないため、標準的な「新テーブル作成 → データコピー → 旧テーブル削除 → リネーム」方式でカラムを除去。テーブル再構築中は `PRAGMA foreign_keys = OFF` で FK チェックを一時停止し、完了後に再度 ON に戻す
+
+---
+
+## Issue #68 作業記録（2026-05-28）
+
+### やったこと
+
+- `src/renderer/src/components/IncidentForm.tsx` の園児名入力を変更
+  - `<input type="text" list="child-name-list">` と `<datalist>` を削除
+  - `<select>` で localStorage の履歴から名前を選択できるよう変更
+  - テキスト入力＋「追加」ボタンで新しい名前を追加→履歴保存＆自動選択
+  - `newChildName` state と `handleAddChildName` 関数を追加
+  - `handleClear` に `setNewChildName('')` を追加
+
+### 技術的な決定事項
+
+- **履歴の保存タイミング**: 「追加」ボタン押下時と報告登録成功時の2か所で保存。追加ボタンで先に選択済みにしておくことで、ユーザーが名前を追加してすぐ登録できる
+- **パターン統一**: 場所・クラス・けがの種類と同じ「セレクト＋フリーワード追加」方式に揃えた。datalist と異なりキーボード操作で選択肢が出ない代わりに、選択状態が明示的になる
