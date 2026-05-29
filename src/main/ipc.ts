@@ -302,14 +302,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('pdf:build', async (_e, payload: {
     incidentsByType: { type: string; incidents: IncidentRow[] }[]
     periodLabel: string
-    chartImagesByType: { type: string; imageBytes: number[] }[]
+    chartImagesByType: { type: string; imageBytes: Uint8Array }[]
   }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return buildPdfWithTextPages(payload as any)
   })
 
   // ---- PDF保存（バッファ受け取り） ----
-  ipcMain.handle('pdf:export-save', async (_e, payload: { buffer: number[]; defaultName: string }) => {
+  ipcMain.handle('pdf:export-save', async (_e, payload: { buffer: Uint8Array; defaultName: string }) => {
     const { filePath, canceled } = await dialog.showSaveDialog({
       defaultPath: payload.defaultName,
       filters: [{ name: 'PDF ファイル', extensions: ['pdf'] }]
