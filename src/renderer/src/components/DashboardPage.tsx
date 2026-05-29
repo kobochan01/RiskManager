@@ -84,8 +84,6 @@ export default function DashboardPage(): JSX.Element {
     if (!stats) return
     setExporting(true)
     const container = document.createElement('div')
-    container.style.position = 'absolute'
-    container.style.left = '-9999px'
     document.body.appendChild(container)
     let root: ReturnType<typeof createRoot> | null = null
     try {
@@ -111,7 +109,7 @@ export default function DashboardPage(): JSX.Element {
         }))
       )
 
-      // 種別ごとにグラフをキャプチャ
+      // 種別ごとにグラフをキャプチャ（key を使わず props 更新で ref を安定させる）
       root = createRoot(container)
       const chartImagesByType: { type: string; imageBytes: number[] }[] = []
       let pdfContainerHandle: PdfContainerHandle | null = null
@@ -120,7 +118,6 @@ export default function DashboardPage(): JSX.Element {
         await new Promise<void>((resolve) => {
           root!.render(
             <PdfContainer
-              key={type}
               ref={(handle) => { pdfContainerHandle = handle }}
               stats={typeStats}
               title={type}
@@ -129,7 +126,9 @@ export default function DashboardPage(): JSX.Element {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
         })
         const chartElement = pdfContainerHandle?.getChartElement() ?? null
-        if (!chartElement) throw new Error(`グラフ要素が取得できませんでした: ${type}`)
+        if (!chartElement) {
+          throw new Error(`グラフ要素が取得できませんでした: ${type}`)
+        }
         const canvas = await html2canvas(chartElement, {
           scale: 2, useCORS: true, backgroundColor: '#ffffff',
         })
@@ -148,6 +147,8 @@ export default function DashboardPage(): JSX.Element {
 
       const defaultName = buildPdfFileName(dateFrom)
       await window.api.invoke('pdf:export-save', { buffer, defaultName })
+    } catch (err) {
+      window.alert(`PDF生成に失敗しました:\n${err instanceof Error ? err.message : String(err)}`)
     } finally {
       root?.unmount()
       document.body.removeChild(container)
