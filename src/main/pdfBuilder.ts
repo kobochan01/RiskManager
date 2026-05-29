@@ -129,8 +129,8 @@ function buildIncidentPages(
 export async function buildPdfWithTextPages(payload: {
   incidentsByType: { type: string; incidents: IncidentRow[] }[]
   periodLabel: string
-  chartImagesByType: { type: string; imageBytes: number[] }[]
-}): Promise<number[]> {
+  chartImagesByType: { type: string; imageBytes: Uint8Array }[]
+}): Promise<Uint8Array> {
   const { incidentsByType, periodLabel, chartImagesByType } = payload
   const fontBase64 = loadFontBase64()
   const doc = makeDoc(fontBase64)
@@ -154,11 +154,11 @@ export async function buildPdfWithTextPages(payload: {
   for (const { type, imageBytes } of chartImagesByType) {
     doc.addPage()
     drawPageHeader(doc, `${type} 集計グラフ`, periodLabel, `${currentPage} / ${totalPages}`)
-    const base64 = Buffer.from(new Uint8Array(imageBytes)).toString('base64')
+    const base64 = Buffer.from(imageBytes).toString('base64')
     doc.addImage(`data:image/png;base64,${base64}`, 'PNG', 28, 44, 841.89 - 56, 595.28 - 60)
     currentPage++
   }
 
   const output = doc.output('arraybuffer')
-  return Array.from(new Uint8Array(output))
+  return new Uint8Array(output)
 }

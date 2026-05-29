@@ -112,7 +112,7 @@ export default function DashboardPage(): JSX.Element {
 
       // 種別ごとにグラフをキャプチャ（flushSync で同期レンダリングを保証）
       root = createRoot(container)
-      const chartImagesByType: { type: string; imageBytes: number[] }[] = []
+      const chartImagesByType: { type: string; imageBytes: Uint8Array }[] = []
       let pdfContainerHandle: PdfContainerHandle | null = null
 
       for (const { type, stats: typeStats } of statsByType) {
@@ -139,7 +139,7 @@ export default function DashboardPage(): JSX.Element {
         if (!blob) throw new Error(`画像の生成に失敗しました（${type}）`)
         chartImagesByType.push({
           type,
-          imageBytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
+          imageBytes: new Uint8Array(await blob.arrayBuffer()),
         })
       }
 
@@ -147,7 +147,7 @@ export default function DashboardPage(): JSX.Element {
         incidentsByType,
         periodLabel,
         chartImagesByType,
-      }) as number[]
+      }) as Uint8Array
 
       const defaultName = buildPdfFileName(dateFrom)
       await window.api.invoke('pdf:export-save', { buffer, defaultName })
