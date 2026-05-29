@@ -9,11 +9,14 @@ const autoTable: typeof autoTableModule = (autoTableModule as any).default ?? au
 export type IncidentRow = [number, string, string, string, string, string, string, string]
 //                         id    occ   type  loc   cls   child  inj   desc
 
+let cachedFont: string | null = null
+
 function loadFontBase64(): string {
+  if (cachedFont !== null) return cachedFont
   const fontPath = 'C:\\Windows\\Fonts\\NotoSansJP-VF.ttf'
   try {
-    const buf = readFileSync(fontPath)
-    return buf.toString('base64')
+    cachedFont = readFileSync(fontPath).toString('base64')
+    return cachedFont
   } catch {
     throw new Error(`フォントファイルが見つかりません: ${fontPath}`)
   }
