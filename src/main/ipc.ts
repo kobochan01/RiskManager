@@ -319,33 +319,4 @@ export function registerIpcHandlers(): void {
     return { success: true }
   })
 
-  // ---- PDF出力（旧実装・互換用） ----
-  ipcMain.handle('pdf:export', async (e, payload: { defaultName: string }) => {
-    const pdfBuffer = await e.sender.printToPDF({
-      printBackground: true,
-      pageSize: 'A4',
-      landscape: true
-    })
-    const { filePath, canceled } = await dialog.showSaveDialog({
-      defaultPath: payload.defaultName,
-      filters: [{ name: 'PDF ファイル', extensions: ['pdf'] }]
-    })
-    if (canceled || !filePath) return { success: false }
-    writeFileSync(filePath, pdfBuffer)
-    return { success: true }
-  })
-
-  // ---- 設定 ----
-  ipcMain.handle('db:get-setting', (_e, key: string) => {
-    const rows = getDb().exec('SELECT value FROM settings WHERE key = ?', [key])
-    return rows[0]?.values[0]?.[0] ?? null
-  })
-
-  ipcMain.handle('db:set-setting', (_e, key: string, value: string) => {
-    getDb().run(
-      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-      [key, value]
-    )
-    persistDb()
-  })
 }

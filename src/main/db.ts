@@ -57,11 +57,6 @@ CREATE TABLE IF NOT EXISTS incidents (
   FOREIGN KEY (injury_type_id) REFERENCES injury_types(id)
 );
 
-CREATE TABLE IF NOT EXISTS settings (
-  key   TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS children (
   id   INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT    NOT NULL UNIQUE
