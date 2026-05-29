@@ -53,6 +53,7 @@
 | 27 | [#64](https://github.com/kobochan01/RiskManager/issues/64) | インシデント登録が失敗する2つのバグを修正（occurredAt未定義・DBマイグレーション不備） | ✅ 完了 |
 | 28 | [#68](https://github.com/kobochan01/RiskManager/issues/68) | 園児名入力をフリーワード履歴のプルダウン選択方式に変更する | ✅ 完了 |
 | 29 | [#70](https://github.com/kobochan01/RiskManager/issues/70) | Phase1 DB層・IPCハンドラー・preload の基盤整備（3種別対応・園児名マスタ） | ✅ 完了 |
+| 30 | [#72](https://github.com/kobochan01/RiskManager/issues/72) | Phase2 pdfBuilder・PDFグラフ 3種別対応（IncidentRow 8列・種別別グラフページ） | ✅ 完了 |
 
 ---
 
@@ -213,6 +214,8 @@ CREATE TABLE settings (
 | `chore/60-p4-code-quality-improvements` | [#61](https://github.com/kobochan01/RiskManager/pull/61) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ マージ済み |
 | `fix/64-incident-registration-failure` | [#65](https://github.com/kobochan01/RiskManager/pull/65) | インシデント登録が失敗する2つのバグを修正 | ✅ マージ済み |
 | `feature/68-child-name-dropdown` | [#69](https://github.com/kobochan01/RiskManager/pull/69) | 園児名入力をフリーワード履歴のプルダウン選択方式に変更 | ✅ マージ済み |
+| `feature/70-phase1-db-ipc-preload` | [#71](https://github.com/kobochan01/RiskManager/pull/71) | Phase1 DB層・IPC・preload 3種別対応・園児名マスタ追加 | ✅ マージ済み |
+| `feature/72-phase2-pdf-builder` | [#73](https://github.com/kobochan01/RiskManager/pull/73) | Phase2 pdfBuilder・PDFグラフ 3種別対応 | ✅ マージ済み |
 
 ---
 
@@ -468,3 +471,53 @@ CREATE TABLE settings (
 
 - **履歴の保存タイミング**: 「追加」ボタン押下時と報告登録成功時の2か所で保存。追加ボタンで先に選択済みにしておくことで、ユーザーが名前を追加してすぐ登録できる
 - **パターン統一**: 場所・クラス・けがの種類と同じ「セレクト＋フリーワード追加」方式に揃えた。datalist と異なりキーボード操作で選択肢が出ない代わりに、選択状態が明示的になる
+
+---
+
+## Issue #70 作業記録（2026-05-29）
+
+### やったこと
+
+- `src/main/db.ts` にマイグレーション（Phase 3）を追加
+  - `incidents.incident_type TEXT NOT NULL DEFAULT 'ヒヤリハット'` カラムを追加
+  - `children` マスタテーブル（id / name）を新規作成
+- `src/main/ipc.ts` を更新
+  - `db:get-incidents` に `incidentType` フィルターを追加（Phase 1 の `incident_type` フィールド対応）
+  - `db:add-incident` / `db:update-incident` に `incident_type` を追加
+  - `db:get-stats` の時間帯集計を30分刻みに変更（スロットインデックス = `hour * 2 + (minute >= 30 ? 1 : 0)`）
+  - `db:get-incidents-filtered` に `incident_type` を含む8列クエリに変更
+  - `db:get-matrix` ハンドラーを削除（集計表廃止）
+  - `db:get-children` / `db:add-child` / `db:delete-child` / `db:update-child` ハンドラーを追加
+  - `pdf:build` ハンドラーを新形式（`incidentsByType` / `chartImagesByType`）に変更
+- `src/preload/index.ts` の `ALLOWED_CHANNELS` に新ハンドラーを追加
+
+### 技術的な決定事項
+
+- **30分刻みの計算**: `slot_index = hour * 2 + (minute >= 30 ? 1 : 0)` で0〜47の整数にバケット化し、フロント側で `HH:MM-HH:MM` 文字列に変換。07:00〜18:59を対象とするため24スロット分を描画
+- **incident_type のデフォルト**: 既存データとの後方互換性のため `DEFAULT 'ヒヤリハット'` を設定
+- **children テーブル**: 園児名をマスタ管理するため新規追加。`incidents.child_name` はフリーテキストのまま維持し、UIで選択肢として提示する設計
+
+---
+
+## Issue #72 作業記録（2026-05-29）
+
+### やったこと
+
+- `src/main/pdfBuilder.ts` を全面更新
+  - `IncidentRow` を 7 列 → 8 列に変更（2列目に `incident_type` を追加）
+  - `MatrixData` 型・`buildMatrixPage` 関数を削除（時間帯別集計表ページを廃止）
+  - `buildIncidentPages` に `typeSuffix` パラメーターを追加。ヘッダーを `${種別}事案一覧`、テーブルを7列（発生日時・種別・場所・クラス・園児名・けがの種類・事故内容）に変更
+  - `buildPdfWithTextPages` を再設計。`incidentsByType` ごとに一覧ページを出力し、その後 `chartImagesByType` ごとにグラフページを出力する構成に変更
+- `src/renderer/src/components/pdf/PdfChartPage.tsx` を更新
+  - `title?: string` props を追加。グラフ上部に `${title} 集計グラフ` ヘッダーを表示
+  - 時間帯ラベルを「1時間ごと」→「30分ごと」に変更
+  - `maxBarSize` を `16` → `10` に縮小（24スロット対応で棒が重ならないよう調整）
+- `src/renderer/src/components/pdf/PdfContainer.tsx` に `title?: string` props を追加し `PdfChartPage` に渡すよう変更
+- `src/renderer/src/utils/pdfExport.ts` の `IncidentRow` を 8 列に更新
+- `src/renderer/src/utils/pdfExport.test.ts` の `makeRows` に `incident_type` フィールドを追加
+
+### 技術的な決定事項
+
+- **集計表廃止の理由**: 3種別対応後は「種別ごとグラフ1ページ」が集計表の役割を担う。午前/午後2ページの集計表は不要になる
+- **ページ構成の変更**: `種別A一覧 → 種別B一覧 → 種別C一覧 → 種別Aグラフ → 種別Bグラフ → 種別Cグラフ` の順で出力。一覧とグラフが分離するため見やすい
+- **`buildPdfWithTextPages` の新シグネチャ**: IPC ハンドラー（ipc.ts）は Phase 1 時点で既に新形式に更新済みであったため、pdfBuilder.ts の実装を合わせる形で変更した
