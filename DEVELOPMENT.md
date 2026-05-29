@@ -59,6 +59,7 @@
 | 33 | [#78](https://github.com/kobochan01/RiskManager/issues/78) | Phase5 テストファイル整備（種別対応・childrenCRUD・splitIncidentsIntoPages追加） | ✅ 完了 |
 | 34 | [#80](https://github.com/kobochan01/RiskManager/issues/80) | P0クリティカル修正 - フォント不在クラッシュ・PDF生成中UIフリーズの解消 | ✅ 完了 |
 | 35 | [#83](https://github.com/kobochan01/RiskManager/issues/83) | P1-1 IPC転送の不要なnumber[]変換を排除してメモリ効率を改善 | ✅ 完了 |
+| 36 | [#86](https://github.com/kobochan01/RiskManager/issues/86) | P1-2 pdfBuilderのフォント読み込みにレイジーキャッシュを追加 | ✅ 完了 |
 
 ---
 
@@ -226,6 +227,7 @@ CREATE TABLE settings (
 | `feature/78-phase5-test-updates` | [#79](https://github.com/kobochan01/RiskManager/pull/79) | Phase5 テストファイル整備（種別対応・childrenCRUD・splitIncidentsIntoPages追加） | ✅ マージ済み |
 | `fix/80-p0-font-crash-ui-freeze` | [#81](https://github.com/kobochan01/RiskManager/pull/81) | P0クリティカル修正 - フォント不在クラッシュ・PDF生成中UIフリーズの解消 | ✅ マージ済み |
 | `feature/83-uint8array-ipc-transfer` | [#84](https://github.com/kobochan01/RiskManager/pull/84) | P1-1 IPC転送の不要なnumber[]変換を排除してメモリ効率を改善 | ✅ マージ済み |
+| `feature/86-font-lazy-cache` | [#87](https://github.com/kobochan01/RiskManager/pull/87) | P1-2 pdfBuilderのフォント読み込みにレイジーキャッシュを追加 | ✅ マージ済み |
 
 ---
 
