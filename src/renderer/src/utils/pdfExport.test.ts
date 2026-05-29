@@ -4,7 +4,7 @@ import type { IncidentRow } from './pdfExport'
 
 function makeRows(n: number): IncidentRow[] {
   return Array.from({ length: n }, (_, i) => [
-    i + 1, '2026-01-01T09:00', '園庭', '年少', `子供${i + 1}`, '打撲', '説明',
+    i + 1, '2026-01-01T09:00', 'ヒヤリハット', '園庭', '年少', `子供${i + 1}`, '打撲', '説明',
   ] as IncidentRow)
 }
 

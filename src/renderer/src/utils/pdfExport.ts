@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas'
 
-// [id, occurred_at, location_name, class_name, child_name, injury_type_name, description]
-export type IncidentRow = [number, string, string, string, string, string, string]
+// [id, occurred_at, incident_type, location_name, class_name, child_name, injury_type_name, description]
+export type IncidentRow = [number, string, string, string, string, string, string, string]
 
 export type MatrixData = {
   slotLabels: string[]

@@ -27,12 +27,13 @@ type Props = {
   timeSlots: TimeSlot[]
   injuryTypes: NameCount[]
   locations: NameCount[]
+  title?: string
 }
 
 // グラフ3種を1ページにダッシュボード風レイアウトで表示（ヘッダーなし・グラフ本体のみ）
 // 上段: 時間帯別（全幅）
 // 下段左: けがの種類別（円グラフ）  下段右: 場所別（横棒グラフ）
-export default function PdfChartDashboard({ timeSlots, injuryTypes, locations }: Props): JSX.Element {
+export default function PdfChartDashboard({ timeSlots, injuryTypes, locations, title }: Props): JSX.Element {
   const PADDING = 20
   const GAP = 12
   const FOOTER_MARGIN = 20
@@ -66,8 +67,17 @@ export default function PdfChartDashboard({ timeSlots, injuryTypes, locations }:
     >
       {/* 上段: 時間帯別グラフ */}
       <div style={{ marginBottom: GAP }}>
+        {title && (
+          <div style={{
+            fontSize: 13, fontWeight: 'bold', color: '#1e3a8a',
+            marginBottom: 8, paddingBottom: 4,
+            borderBottom: '2px solid #3b82f6'
+          }}>
+            {title} 集計グラフ
+          </div>
+        )}
         <div style={{ fontSize: 11, fontWeight: 'bold', color: '#1e40af', marginBottom: 4 }}>
-          時間帯別インシデント件数（1時間ごと）
+          時間帯別インシデント件数（30分ごと）
         </div>
         {timeSlots.length === 0 ? (
           <NoData h={topH} />
@@ -83,7 +93,7 @@ export default function PdfChartDashboard({ timeSlots, injuryTypes, locations }:
             />
             <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={28} />
             <Tooltip formatter={(v) => [`${v}件`, '件数']} />
-            <Bar dataKey="count" fill="#3b82f6" radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
+            <Bar dataKey="count" fill="#3b82f6" radius={[2, 2, 0, 0]} maxBarSize={10} isAnimationActive={false} />
           </BarChart>
         )}
       </div>
