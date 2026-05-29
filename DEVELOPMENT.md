@@ -54,6 +54,7 @@
 | 28 | [#68](https://github.com/kobochan01/RiskManager/issues/68) | 園児名入力をフリーワード履歴のプルダウン選択方式に変更する | ✅ 完了 |
 | 29 | [#70](https://github.com/kobochan01/RiskManager/issues/70) | Phase1 DB層・IPCハンドラー・preload の基盤整備（3種別対応・園児名マスタ） | ✅ 完了 |
 | 30 | [#72](https://github.com/kobochan01/RiskManager/issues/72) | Phase2 pdfBuilder・PDFグラフ 3種別対応（IncidentRow 8列・種別別グラフページ） | ✅ 完了 |
+| 31 | [#74](https://github.com/kobochan01/RiskManager/issues/74) | Phase3 マスタ管理に園児名タブ追加・報告入力フォームに種別フィールド追加 | ✅ 完了 |
 
 ---
 
@@ -216,6 +217,7 @@ CREATE TABLE settings (
 | `feature/68-child-name-dropdown` | [#69](https://github.com/kobochan01/RiskManager/pull/69) | 園児名入力をフリーワード履歴のプルダウン選択方式に変更 | ✅ マージ済み |
 | `feature/70-phase1-db-ipc-preload` | [#71](https://github.com/kobochan01/RiskManager/pull/71) | Phase1 DB層・IPC・preload 3種別対応・園児名マスタ追加 | ✅ マージ済み |
 | `feature/72-phase2-pdf-builder` | [#73](https://github.com/kobochan01/RiskManager/pull/73) | Phase2 pdfBuilder・PDFグラフ 3種別対応 | ✅ マージ済み |
+| `feature/74-phase3-master-form` | [#75](https://github.com/kobochan01/RiskManager/pull/75) | Phase3 マスタ管理に園児名タブ追加・報告入力フォームに種別フィールド追加 | ✅ マージ済み |
 
 ---
 
@@ -521,3 +523,30 @@ CREATE TABLE settings (
 - **集計表廃止の理由**: 3種別対応後は「種別ごとグラフ1ページ」が集計表の役割を担う。午前/午後2ページの集計表は不要になる
 - **ページ構成の変更**: `種別A一覧 → 種別B一覧 → 種別C一覧 → 種別Aグラフ → 種別Bグラフ → 種別Cグラフ` の順で出力。一覧とグラフが分離するため見やすい
 - **`buildPdfWithTextPages` の新シグネチャ**: IPC ハンドラー（ipc.ts）は Phase 1 時点で既に新形式に更新済みであったため、pdfBuilder.ts の実装を合わせる形で変更した
+
+---
+
+## Issue #74 作業記録（2026-05-29）
+
+### やったこと
+
+- `src/renderer/src/components/MasterPage.tsx` を更新
+  - `TabKey` 型に `'children'` を追加
+  - `TABS` 配列に「園児名」タブ（4番目）を追加
+  - `IPC` マップに `children` エントリを追加（`db:get-children` / `db:add-child` / `db:delete-child` / `db:update-child`）
+- `src/renderer/src/components/IncidentForm.tsx` を更新
+  - タイトルを「ヒヤリハット報告入力」→「報告入力」に変更
+  - `CHILD_NAME_HISTORY_KEY` / `loadChildNameHistory` / `saveChildNameHistory` を削除（localStorage 廃止）
+  - `childNameHistory` / `newChildName` state を削除
+  - `children` state を追加し `loadMasters` で `db:get-children` を取得
+  - `incidentType` state を追加（デフォルト: `'ヒヤリハット'`）
+  - 種別セレクト（ヒヤリハット / インシデント / アクシデント）をフォーム先頭に追加
+  - 園児名フィールドを localStorage コンボボックス → マスタ選択セレクトに変更
+  - `handleSubmit` のペイロードに `incident_type` を追加
+  - `handleClear` で `incidentType` を `'ヒヤリハット'` にリセット
+
+### 技術的な決定事項
+
+- **園児名のマスタ化**: localStorage 履歴方式をやめ、Phase 1 で追加した `children` テーブルから選択する方式に統一。既存の `incidents.child_name` はフリーテキストのまま維持し、外部キー制約なし
+- **種別フィールドの配置**: フォームの先頭に配置。種別が最初に確定することで、以降の入力（けがの種類など）の文脈が明確になる
+- **既存レコードとの互換性**: `incident_type` は Phase 1 の DB マイグレーションで `DEFAULT 'ヒヤリハット'` 済みのため、既存データの扱いは変わらない

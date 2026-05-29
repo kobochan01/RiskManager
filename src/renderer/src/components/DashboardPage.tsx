@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { flushSync } from 'react-dom'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
-import { buildPdfFileName, buildPdfDocument } from '../utils/pdfExport'
-import type { IncidentRow, MatrixData } from '../utils/pdfExport'
-import { getPeriodRange, QUARTER_LABELS, QUARTER_RANGES } from '../utils/periodRange'
+import html2canvas from 'html2canvas'
+import { buildPdfFileName } from '../utils/pdfExport'
+import type { IncidentRow } from '../utils/pdfExport'
+import { getPeriodRange, QUARTER_LABELS } from '../utils/periodRange'
 import type { Period } from '../utils/periodRange'
 import PdfContainer from './pdf/PdfContainer'
 import type { PdfContainerHandle } from './pdf/PdfContainer'
@@ -19,6 +21,7 @@ type Stats = {
 }
 
 const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+const INCIDENT_TYPES = ['ヒヤリハット', 'インシデント', 'アクシデント']
 
 function SlotTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
   const parts = (payload?.value ?? '').split('-')
@@ -52,6 +55,7 @@ export default function DashboardPage(): JSX.Element {
   const [selectedYear, setSelectedYear] = useState(thisCalYear)
   const [selectedMonth, setSelectedMonth] = useState(thisMonth)
   const [selectedQuarter, setSelectedQuarter] = useState(thisQuarter)
+  const [incidentTypeFilter, setIncidentTypeFilter] = useState<string>('')
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -59,11 +63,15 @@ export default function DashboardPage(): JSX.Element {
   useEffect(() => {
     const { from, to } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
     setLoading(true)
-    window.api.invoke('db:get-stats', { dateFrom: from, dateTo: to }).then((result) => {
+    window.api.invoke('db:get-stats', {
+      dateFrom: from,
+      dateTo: to,
+      incidentType: incidentTypeFilter || undefined,
+    }).then((result) => {
       setStats(result as Stats)
       setLoading(false)
     })
-  }, [period, selectedYear, selectedMonth, selectedQuarter])
+  }, [period, selectedYear, selectedMonth, selectedQuarter, incidentTypeFilter])
 
   const { from } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
   const periodLabel = buildPeriodLabel(period, selectedYear, selectedMonth, selectedQuarter)
@@ -78,33 +86,73 @@ export default function DashboardPage(): JSX.Element {
     setExporting(true)
     const container = document.createElement('div')
     document.body.appendChild(container)
-    const pdfRef = { current: null as PdfContainerHandle | null }
     let root: ReturnType<typeof createRoot> | null = null
     try {
       const { from: dateFrom, to: dateTo } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
 
-      const [incidents, matrix] = await Promise.all([
-        window.api.invoke('db:get-incidents-filtered', { dateFrom, dateTo }) as Promise<IncidentRow[]>,
-        window.api.invoke('db:get-matrix', { dateFrom, dateTo }) as Promise<MatrixData>,
-      ])
+      // 種別ごとの一覧データを並列取得
+      const incidentsByType = await Promise.all(
+        INCIDENT_TYPES.map(async (type) => ({
+          type,
+          incidents: await window.api.invoke('db:get-incidents-filtered', {
+            dateFrom, dateTo, incidentType: type,
+          }) as IncidentRow[],
+        }))
+      )
 
+      // 種別ごとの統計データを並列取得（グラフ用）
+      const statsByType = await Promise.all(
+        INCIDENT_TYPES.map(async (type) => ({
+          type,
+          stats: await window.api.invoke('db:get-stats', {
+            dateFrom, dateTo, incidentType: type,
+          }) as Stats,
+        }))
+      )
+
+      // 種別ごとにグラフをキャプチャ（flushSync で同期レンダリングを保証）
       root = createRoot(container)
-      await new Promise<void>((resolve) => {
-        root!.render(
-          <PdfContainer
-            ref={(handle) => { pdfRef.current = handle }}
-            stats={stats}
-          />
-        )
-        // Rechartsの描画完了を待つ
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-      })
+      const chartImagesByType: { type: string; imageBytes: number[] }[] = []
+      let pdfContainerHandle: PdfContainerHandle | null = null
 
-      const chartElement = pdfRef.current?.getChartElement() ?? null
-      if (!chartElement) throw new Error('グラフ要素が取得できませんでした')
-      const buffer = await buildPdfDocument(chartElement, incidents, matrix, periodLabel)
+      for (const { type, stats: typeStats } of statsByType) {
+        flushSync(() => {
+          root!.render(
+            <PdfContainer
+              ref={(handle) => { pdfContainerHandle = handle }}
+              stats={typeStats}
+              title={type}
+            />
+          )
+        })
+        // Recharts SVG の描画完了を待つ
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+
+        const chartElement = pdfContainerHandle?.getChartElement() ?? null
+        if (!chartElement) {
+          throw new Error(`グラフ要素が取得できませんでした（${type}）。コンポーネントの ref が未設定です。`)
+        }
+        const canvas = await html2canvas(chartElement, {
+          scale: 2, useCORS: true, backgroundColor: '#ffffff',
+        })
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), 'image/png'))
+        if (!blob) throw new Error(`画像の生成に失敗しました（${type}）`)
+        chartImagesByType.push({
+          type,
+          imageBytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
+        })
+      }
+
+      const buffer = await window.api.invoke('pdf:build', {
+        incidentsByType,
+        periodLabel,
+        chartImagesByType,
+      }) as number[]
+
       const defaultName = buildPdfFileName(dateFrom)
       await window.api.invoke('pdf:export-save', { buffer, defaultName })
+    } catch (err) {
+      window.alert(`PDF生成に失敗しました:\n${err instanceof Error ? err.message : String(err)}`)
     } finally {
       root?.unmount()
       document.body.removeChild(container)
@@ -138,6 +186,20 @@ export default function DashboardPage(): JSX.Element {
               {p === 'month' ? '月別' : p === 'quarter' ? '四半期' : '年別'}
             </button>
           ))}
+          {/* 種別フィルター */}
+          <div className="flex items-center gap-2 ml-4">
+            <span className="text-sm font-medium text-gray-600">種別：</span>
+            <select
+              value={incidentTypeFilter}
+              onChange={(e) => setIncidentTypeFilter(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">全て</option>
+              {INCIDENT_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* 年・月・四半期セレクタ */}
@@ -220,7 +282,7 @@ export default function DashboardPage(): JSX.Element {
             <>
               {/* 時間帯別グラフ */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h2 className="text-sm font-semibold text-gray-700 mb-4">時間帯別（1時間ごと）</h2>
+                <h2 className="text-sm font-semibold text-gray-700 mb-4">時間帯別（30分ごと）</h2>
                 {stats.timeSlots.length === 0 ? (
                   <p className="text-center text-gray-400 text-sm py-8">データなし</p>
                 ) : (
@@ -236,7 +298,7 @@ export default function DashboardPage(): JSX.Element {
                       />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
                       <Tooltip formatter={(v) => [`${v}件`, '件数']} />
-                      <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={20} />
+                      <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={10} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
