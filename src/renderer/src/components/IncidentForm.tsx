@@ -2,27 +2,13 @@ import { useState, useEffect } from 'react'
 
 type MasterItem = [number, string]
 
-const CHILD_NAME_HISTORY_KEY = 'childNameHistory'
-
-function loadChildNameHistory(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(CHILD_NAME_HISTORY_KEY) ?? '[]')
-  } catch {
-    return []
-  }
-}
-
-function saveChildNameHistory(name: string, history: string[]): string[] {
-  const updated = [name, ...history.filter((n) => n !== name)].slice(0, 50)
-  localStorage.setItem(CHILD_NAME_HISTORY_KEY, JSON.stringify(updated))
-  return updated
-}
-
 export default function IncidentForm(): JSX.Element {
   const [locations, setLocations] = useState<MasterItem[]>([])
   const [classes, setClasses] = useState<MasterItem[]>([])
   const [injuryTypes, setInjuryTypes] = useState<MasterItem[]>([])
+  const [children, setChildren] = useState<MasterItem[]>([])
 
+  const [incidentType, setIncidentType] = useState<string>('ヒヤリハット')
   const [occurredDate, setOccurredDate] = useState('')
   const [occurredHour, setOccurredHour] = useState('')
   const [occurredMinute, setOccurredMinute] = useState('')
@@ -38,20 +24,20 @@ export default function IncidentForm(): JSX.Element {
   const [addClassError, setAddClassError] = useState('')
   const [newInjuryType, setNewInjuryType] = useState('')
   const [addInjuryTypeError, setAddInjuryTypeError] = useState('')
-  const [childNameHistory, setChildNameHistory] = useState<string[]>(() => loadChildNameHistory())
-  const [newChildName, setNewChildName] = useState('')
   const [submitMessage, setSubmitMessage] = useState('')
   const [submitError, setSubmitError] = useState('')
 
   async function loadMasters(): Promise<void> {
-    const [locs, cls, inj] = await Promise.all([
+    const [locs, cls, inj, chn] = await Promise.all([
       window.api.invoke('db:get-locations') as Promise<MasterItem[]>,
       window.api.invoke('db:get-classes') as Promise<MasterItem[]>,
-      window.api.invoke('db:get-injury-types') as Promise<MasterItem[]>
+      window.api.invoke('db:get-injury-types') as Promise<MasterItem[]>,
+      window.api.invoke('db:get-children') as Promise<MasterItem[]>
     ])
     setLocations(locs)
     setClasses(cls)
     setInjuryTypes(inj)
+    setChildren(chn)
   }
 
   useEffect(() => {
@@ -106,22 +92,14 @@ export default function IncidentForm(): JSX.Element {
     }
   }
 
-  function handleAddChildName(): void {
-    const name = newChildName.trim()
-    if (!name) return
-    setChildNameHistory((prev) => saveChildNameHistory(name, prev))
-    setChildName(name)
-    setNewChildName('')
-  }
-
   function handleClear(): void {
+    setIncidentType('ヒヤリハット')
     setOccurredDate('')
     setOccurredHour('')
     setOccurredMinute('')
     setLocationId(0)
     setClassId(0)
     setChildName('')
-    setNewChildName('')
     setInjuryTypeId(0)
     setDescription('')
     setSubmitMessage('')
@@ -146,6 +124,7 @@ export default function IncidentForm(): JSX.Element {
 
     try {
       await window.api.invoke('db:add-incident', {
+        incident_type: incidentType,
         occurred_at: occurredAt,
         location_id: locationId,
         class_id: classId,
@@ -153,7 +132,6 @@ export default function IncidentForm(): JSX.Element {
         injury_type_id: injuryTypeId,
         description
       })
-      setChildNameHistory((prev) => saveChildNameHistory(childName, prev))
       handleClear()
       setSubmitMessage('報告を登録しました')
     } catch {
@@ -163,8 +141,24 @@ export default function IncidentForm(): JSX.Element {
 
   return (
     <div className="max-w-xl mx-auto p-6">
-      <h2 className="text-lg font-bold text-gray-800 mb-6">ヒヤリハット報告入力</h2>
+      <h2 className="text-lg font-bold text-gray-800 mb-6">報告入力</h2>
       <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* 種別 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">
+            種別 <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={incidentType}
+            onChange={(e) => setIncidentType(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="ヒヤリハット">ヒヤリハット</option>
+            <option value="インシデント">インシデント</option>
+            <option value="アクシデント">アクシデント</option>
+          </select>
+        </div>
 
         {/* 発生日時 */}
         <div>
@@ -271,34 +265,22 @@ export default function IncidentForm(): JSX.Element {
 
         {/* 園児名 */}
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">園児名</label>
+          <label className="block text-sm font-medium text-gray-600 mb-1">
+            園児名 <span className="text-red-500">*</span>
+          </label>
           <select
             value={childName}
             onChange={(e) => setChildName(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
             <option value="">-- 選択してください --</option>
-            {childNameHistory.map((name) => (
-              <option key={name} value={name}>{name}</option>
+            {children.map(([id, name]) => (
+              <option key={id} value={name}>{name}</option>
             ))}
           </select>
-          <div className="flex gap-2 mt-2">
-            <input
-              type="text"
-              placeholder="新しい園児名を入力"
-              value={newChildName}
-              onChange={(e) => setNewChildName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddChildName() } }}
-              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              type="button"
-              onClick={handleAddChildName}
-              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded"
-            >
-              追加
-            </button>
-          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            園児名は「マスタ管理」タブで追加できます
+          </p>
         </div>
 
         {/* けがの種類 */}

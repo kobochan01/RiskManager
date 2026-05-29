@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
 
 type MasterItem = [number, string]
-type TabKey = 'classes' | 'injuryTypes' | 'locations'
+type TabKey = 'classes' | 'injuryTypes' | 'locations' | 'children'
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'classes', label: 'クラス' },
+  { key: 'classes',     label: 'クラス' },
   { key: 'injuryTypes', label: 'けがの種類' },
-  { key: 'locations', label: '場所' }
+  { key: 'locations',   label: '場所' },
+  { key: 'children',    label: '園児名' },
 ]
 
 const IPC: Record<TabKey, { get: string; add: string; delete: string; update: string }> = {
   classes:     { get: 'db:get-classes',      add: 'db:add-class',       delete: 'db:delete-class',       update: 'db:update-class' },
   injuryTypes: { get: 'db:get-injury-types', add: 'db:add-injury-type', delete: 'db:delete-injury-type', update: 'db:update-injury-type' },
-  locations:   { get: 'db:get-locations',    add: 'db:add-location',    delete: 'db:delete-location',    update: 'db:update-location' }
+  locations:   { get: 'db:get-locations',    add: 'db:add-location',    delete: 'db:delete-location',    update: 'db:update-location' },
+  children:    { get: 'db:get-children',     add: 'db:add-child',       delete: 'db:delete-child',       update: 'db:update-child' },
 }
 
 export default function MasterPage(): JSX.Element {
