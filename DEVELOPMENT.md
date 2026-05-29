@@ -61,6 +61,7 @@
 | 35 | [#83](https://github.com/kobochan01/RiskManager/issues/83) | P1-1 IPC転送の不要なnumber[]変換を排除してメモリ効率を改善 | ✅ 完了 |
 | 36 | [#86](https://github.com/kobochan01/RiskManager/issues/86) | P1-2 pdfBuilderのフォント読み込みにレイジーキャッシュを追加 | ✅ 完了 |
 | 37 | [#89](https://github.com/kobochan01/RiskManager/issues/89) | P1-3 Promise.all の直列化を解消してIPC 6件を完全並列化 | ✅ 完了 |
+| 38 | [#92](https://github.com/kobochan01/RiskManager/issues/92) | P2 デッドコード削除（IPC3ハンドラー・settingsテーブル・splitIncidentsIntoPages） | ✅ 完了 |
 
 ---
 
@@ -230,6 +231,7 @@ CREATE TABLE settings (
 | `feature/83-uint8array-ipc-transfer` | [#84](https://github.com/kobochan01/RiskManager/pull/84) | P1-1 IPC転送の不要なnumber[]変換を排除してメモリ効率を改善 | ✅ マージ済み |
 | `feature/86-font-lazy-cache` | [#87](https://github.com/kobochan01/RiskManager/pull/87) | P1-2 pdfBuilderのフォント読み込みにレイジーキャッシュを追加 | ✅ マージ済み |
 | `perf/89-parallelize-ipc-promise-all` | [#90](https://github.com/kobochan01/RiskManager/pull/90) | P1-3 Promise.all の直列化を解消してIPC 6件を完全並列化 | ✅ マージ済み |
+| `chore/92-remove-p2-dead-code` | [#93](https://github.com/kobochan01/RiskManager/pull/93) | P2 デッドコード削除（IPC3ハンドラー・settingsテーブル・splitIncidentsIntoPages） | ✅ マージ済み |
 
 ---
 
