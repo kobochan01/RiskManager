@@ -56,6 +56,7 @@
 | 30 | [#72](https://github.com/kobochan01/RiskManager/issues/72) | Phase2 pdfBuilder・PDFグラフ 3種別対応（IncidentRow 8列・種別別グラフページ） | ✅ 完了 |
 | 31 | [#74](https://github.com/kobochan01/RiskManager/issues/74) | Phase3 マスタ管理に園児名タブ追加・報告入力フォームに種別フィールド追加 | ✅ 完了 |
 | 32 | [#76](https://github.com/kobochan01/RiskManager/issues/76) | Phase4 報告一覧・ダッシュボードに種別フィルター追加・PDF出力フロー再設計 | ✅ 完了 |
+| 33 | [#78](https://github.com/kobochan01/RiskManager/issues/78) | Phase5 テストファイル整備（種別対応・childrenCRUD・splitIncidentsIntoPages追加） | ✅ 完了 |
 
 ---
 
