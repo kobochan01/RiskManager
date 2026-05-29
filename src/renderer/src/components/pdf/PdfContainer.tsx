@@ -10,6 +10,7 @@ type Stats = {
 
 type Props = {
   stats: Stats
+  title?: string
 }
 
 export type PdfContainerHandle = {
@@ -21,7 +22,7 @@ const PAGE_W = 1123
 const PAGE_H = 794
 
 const PdfContainer = forwardRef<PdfContainerHandle, Props>(
-  function PdfContainer({ stats }, ref) {
+  function PdfContainer({ stats, title }, ref) {
     const chartRef = useRef<HTMLDivElement | null>(null)
 
     useImperativeHandle(ref, () => ({
@@ -49,6 +50,7 @@ const PdfContainer = forwardRef<PdfContainerHandle, Props>(
             timeSlots={stats.timeSlots}
             injuryTypes={stats.injuryTypes}
             locations={stats.locations}
+            title={title}
           />
         </div>
       </div>

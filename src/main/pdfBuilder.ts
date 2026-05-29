@@ -6,15 +6,8 @@ import { readFileSync } from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const autoTable: typeof autoTableModule = (autoTableModule as any).default ?? autoTableModule
 
-export type IncidentRow = [number, string, string, string, string, string, string]
-
-export type MatrixData = {
-  slotLabels: string[]
-  locations: string[]
-  injuryTypes: string[]
-  locationMatrix: Record<string, Record<string, number>>
-  injuryMatrix: Record<string, Record<string, number>>
-}
+export type IncidentRow = [number, string, string, string, string, string, string, string]
+//                         id    occ   type  loc   cls   child  inj   desc
 
 function loadFontBase64(): string {
   const buf = readFileSync('C:\\Windows\\Fonts\\NotoSansJP-VF.ttf')
@@ -70,6 +63,7 @@ function buildIncidentPages(
   startPageNum: number,
   totalPages: number,
   isFirstPage: boolean,
+  typeSuffix?: string,
 ): void {
   const ROWS_PER_PAGE = 30
   const pages: IncidentRow[][] = incidents.length === 0
@@ -82,16 +76,16 @@ function buildIncidentPages(
     if (!isFirstPage || pi > 0) doc.addPage()
     isFirstPage = false
 
-    drawPageHeader(doc, 'ヒヤリハット事案一覧', periodLabel, `${startPageNum + pi} / ${totalPages}`)
+    drawPageHeader(doc, `${typeSuffix ?? ''}事案一覧`, periodLabel, `${startPageNum + pi} / ${totalPages}`)
 
-    const body = pages[pi].map(([, occ, loc, cls, child, inj, desc]) => [
-      formatOccurredAt(String(occ)), loc, cls, child, inj, desc,
+    const body = pages[pi].map(([, occ, type, loc, cls, child, inj, desc]) => [
+      formatOccurredAt(String(occ)), type, loc, cls, child, inj, desc,
     ])
 
     autoTable(doc, {
       startY: 42,
       margin: { left: 28, right: 28 },
-      head: [['発生日時', '場所', 'クラス', '園児名', 'けがの種類', '事故内容']],
+      head: [['発生日時', '種別', '場所', 'クラス', '園児名', 'けがの種類', '事故内容']],
       body,
       styles: {
         font: 'NotoSansJP',
@@ -115,133 +109,50 @@ function buildIncidentPages(
         fillColor: [240, 244, 255] as [number, number, number],
       },
       columnStyles: {
-        0: { cellWidth: 118 },
+        0: { cellWidth: 110 },
         1: { cellWidth: 64 },
-        2: { cellWidth: 64 },
-        3: { cellWidth: 64 },
-        4: { cellWidth: 80 },
-        5: { cellWidth: 'auto' },
+        2: { cellWidth: 60 },
+        3: { cellWidth: 60 },
+        4: { cellWidth: 60 },
+        5: { cellWidth: 76 },
+        6: { cellWidth: 'auto' },
       },
     })
   }
 }
 
-function buildMatrixPage(
-  doc: jsPDF,
-  matrix: MatrixData,
-  periodLabel: string,
-  slotRange: 'am' | 'pm',
-): void {
-  const { slotLabels: allSlotLabels, locations, injuryTypes, locationMatrix, injuryMatrix } = matrix
-  const slotLabels = allSlotLabels.filter((s) => {
-    const h = parseInt(s.slice(0, 2), 10)
-    return slotRange === 'am' ? h < 12 : h >= 12
-  })
-
-  doc.addPage()
-  const rangeLabel = slotRange === 'am' ? '07:00〜11:59' : '12:00〜18:59'
-  drawPageHeader(doc, '時間帯別集計表', periodLabel, undefined, `（${rangeLabel}）`)
-
-  if (slotLabels.length === 0) {
-    doc.setFontSize(11)
-    doc.setTextColor(150, 150, 150)
-    doc.text('データなし', 400, 300, { align: 'center' })
-    return
-  }
-
-  // ヘッダー: 2行（場所別グループ / けがの種類別グループ）
-  const headRow1: object[] = [
-    { content: '時間帯', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: '場所別', colSpan: locations.length, styles: { halign: 'center' } },
-    { content: 'けがの種類別', colSpan: injuryTypes.length, styles: { halign: 'center' } },
-    { content: '合計', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-  ]
-  const headRow2 = [...locations, ...injuryTypes].map(col => ({
-    content: col,
-    styles: { halign: 'center', fillColor: [59, 95, 192] as [number, number, number] },
-  }))
-
-  const body = slotLabels.map(slot => {
-    const locRow = locationMatrix[slot] ?? {}
-    const injRow = injuryMatrix[slot] ?? {}
-    const total = locations.reduce((s, c) => s + (locRow[c] ?? 0), 0)
-    return [
-      slot,
-      ...locations.map(c => (locRow[c] ? String(locRow[c]) : '')),
-      ...injuryTypes.map(c => (injRow[c] ? String(injRow[c]) : '')),
-      total ? String(total) : '',
-    ]
-  })
-
-  const totalColIdx = 1 + locations.length + injuryTypes.length
-
-  autoTable(doc, {
-    startY: 42,
-    margin: { left: 28, right: 28 },
-    head: [headRow1, headRow2],
-    body,
-    styles: {
-      font: 'NotoSansJP',
-      fontSize: 8,
-      cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
-      lineColor: [229, 231, 235] as [number, number, number],
-      lineWidth: 0.5,
-      minCellHeight: 12,
-      halign: 'center',
-      valign: 'middle',
-    },
-    headStyles: {
-      font: 'NotoSansJP',
-      fontSize: 7,
-      fillColor: [30, 64, 175] as [number, number, number],
-      textColor: [255, 255, 255] as [number, number, number],
-      fontStyle: 'normal',
-    },
-    alternateRowStyles: {
-      fillColor: [240, 244, 255] as [number, number, number],
-    },
-    columnStyles: {
-      0: { cellWidth: 56, halign: 'center' },
-      [totalColIdx]: {
-        cellWidth: 32,
-        halign: 'center',
-        fillColor: [219, 234, 254] as [number, number, number],
-      },
-    },
-    didParseCell: (data) => {
-      // 合計列を強調
-      if (data.section === 'body' && data.column.index === totalColIdx && data.cell.raw) {
-        data.cell.styles.fillColor = [219, 234, 254]
-      }
-    },
-  })
-}
-
 export async function buildPdfWithTextPages(payload: {
-  incidents: IncidentRow[]
-  matrix: MatrixData
+  incidentsByType: { type: string; incidents: IncidentRow[] }[]
   periodLabel: string
-  chartImageBytes: number[]
+  chartImagesByType: { type: string; imageBytes: number[] }[]
 }): Promise<number[]> {
-  const { incidents, matrix, periodLabel, chartImageBytes } = payload
-
+  const { incidentsByType, periodLabel, chartImagesByType } = payload
   const fontBase64 = loadFontBase64()
   const doc = makeDoc(fontBase64)
 
-  const incidentPageCount = incidents.length === 0 ? 1 : Math.ceil(incidents.length / 30)
-  const totalPages = incidentPageCount + 3
+  let totalPages = 0
+  for (const { incidents } of incidentsByType) {
+    totalPages += incidents.length === 0 ? 1 : Math.ceil(incidents.length / 30)
+  }
+  totalPages += chartImagesByType.length
 
-  buildIncidentPages(doc, incidents, periodLabel, 1, totalPages, true)
-  buildMatrixPage(doc, matrix, periodLabel, 'am')
-  buildMatrixPage(doc, matrix, periodLabel, 'pm')
+  let currentPage = 1
+  let isFirstPage = true
 
-  // グラフページ: ヘッダーはテキスト、グラフ本体は画像
-  doc.addPage()
-  drawPageHeader(doc, 'ヒヤリハット集計グラフ', periodLabel)
-  const chartBlob = new Uint8Array(chartImageBytes)
-  const base64 = Buffer.from(chartBlob).toString('base64')
-  // ヘッダー(44pt)の下からグラフ画像を配置
-  doc.addImage(`data:image/png;base64,${base64}`, 'PNG', 0, 44, 841.89, 595.28 - 44)
+  for (const { type, incidents } of incidentsByType) {
+    buildIncidentPages(doc, incidents, periodLabel, currentPage, totalPages, isFirstPage, type)
+    const pageCount = incidents.length === 0 ? 1 : Math.ceil(incidents.length / 30)
+    currentPage += pageCount
+    isFirstPage = false
+  }
+
+  for (const { type, imageBytes } of chartImagesByType) {
+    doc.addPage()
+    drawPageHeader(doc, `${type} 集計グラフ`, periodLabel, `${currentPage} / ${totalPages}`)
+    const base64 = Buffer.from(new Uint8Array(imageBytes)).toString('base64')
+    doc.addImage(`data:image/png;base64,${base64}`, 'PNG', 28, 44, 841.89 - 56, 595.28 - 60)
+    currentPage++
+  }
 
   const output = doc.output('arraybuffer')
   return Array.from(new Uint8Array(output))
