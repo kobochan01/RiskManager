@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS locations (
 CREATE TABLE IF NOT EXISTS incidents (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   occurred_at     DATETIME NOT NULL,
+  incident_type   TEXT     NOT NULL DEFAULT 'ヒヤリハット',
   location_id     INTEGER  NOT NULL,
   class_id        INTEGER  NOT NULL,
   child_name      TEXT     NOT NULL,
@@ -59,6 +60,11 @@ CREATE TABLE IF NOT EXISTS incidents (
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS children (
+  id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT    NOT NULL UNIQUE
 );
 `
 
@@ -105,6 +111,18 @@ function migrateDb(database: Database): void {
     database.run('ALTER TABLE incidents_new RENAME TO incidents')
     database.run('PRAGMA foreign_keys = ON')
   }
+
+  cols = database.exec('PRAGMA table_info(incidents)')[0]?.values.map((r) => r[1]) ?? []
+  if (!cols.includes('incident_type')) {
+    database.run("ALTER TABLE incidents ADD COLUMN incident_type TEXT NOT NULL DEFAULT 'ヒヤリハット'")
+  }
+
+  database.run(`
+    CREATE TABLE IF NOT EXISTS children (
+      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT    NOT NULL UNIQUE
+    )
+  `)
 }
 
 let db: Database | null = null

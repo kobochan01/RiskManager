@@ -2,7 +2,7 @@ import { ipcMain, dialog } from 'electron'
 import { writeFileSync } from 'fs'
 import { getDb, persistDb } from './db'
 import { buildPdfWithTextPages } from './pdfBuilder'
-import type { IncidentRow, MatrixData } from './pdfBuilder'
+import type { IncidentRow } from './pdfBuilder'
 
 export function registerIpcHandlers(): void {
   // ---- クラスマスタ ----
@@ -68,6 +68,27 @@ export function registerIpcHandlers(): void {
     persistDb()
   })
 
+  // ---- 園児名マスタ ----
+  ipcMain.handle('db:get-children', () => {
+    const rows = getDb().exec('SELECT id, name FROM children ORDER BY id')
+    return rows[0]?.values ?? []
+  })
+
+  ipcMain.handle('db:add-child', (_e, name: string) => {
+    getDb().run('INSERT INTO children (name) VALUES (?)', [name])
+    persistDb()
+  })
+
+  ipcMain.handle('db:delete-child', (_e, id: number) => {
+    getDb().run('DELETE FROM children WHERE id = ?', [id])
+    persistDb()
+  })
+
+  ipcMain.handle('db:update-child', (_e, id: number, name: string) => {
+    getDb().run('UPDATE children SET name = ? WHERE id = ?', [name, id])
+    persistDb()
+  })
+
   // ---- ヒヤリハット報告 ----
   ipcMain.handle('db:get-incidents', (_e, filters?: {
     keyword?: string
@@ -75,6 +96,7 @@ export function registerIpcHandlers(): void {
     injuryTypeId?: string
     dateFrom?: string
     dateTo?: string
+    incidentType?: string
   }) => {
     const conditions: string[] = []
     const params: (string | number)[] = []
@@ -99,11 +121,16 @@ export function registerIpcHandlers(): void {
       conditions.push('date(i.occurred_at) <= ?')
       params.push(filters.dateTo)
     }
+    if (filters?.incidentType) {
+      conditions.push('i.incident_type = ?')
+      params.push(filters.incidentType)
+    }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
     const rows = getDb().exec(`
       SELECT
         i.id, i.occurred_at,
+        i.incident_type,
         l.name AS location_name,
         c.name AS class_name,
         i.child_name,
@@ -121,6 +148,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('db:add-incident', (_e, payload: {
     occurred_at: string
+    incident_type: string
     location_id: number
     class_id: number
     child_name: string
@@ -129,10 +157,10 @@ export function registerIpcHandlers(): void {
   }) => {
     getDb().run(
       `INSERT INTO incidents
-        (occurred_at, location_id, class_id, child_name, injury_type_id, description)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+        (occurred_at, incident_type, location_id, class_id, child_name, injury_type_id, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
-        payload.occurred_at, payload.location_id, payload.class_id,
+        payload.occurred_at, payload.incident_type, payload.location_id, payload.class_id,
         payload.child_name, payload.injury_type_id, payload.description
       ]
     )
@@ -142,6 +170,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('db:update-incident', (_e, payload: {
     id: number
     occurred_at: string
+    incident_type: string
     location_id: number
     class_id: number
     child_name: string
@@ -150,12 +179,12 @@ export function registerIpcHandlers(): void {
   }) => {
     getDb().run(
       `UPDATE incidents SET
-        occurred_at = ?, location_id = ?, class_id = ?,
+        occurred_at = ?, incident_type = ?, location_id = ?, class_id = ?,
         child_name = ?, injury_type_id = ?, description = ?,
         updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
-        payload.occurred_at, payload.location_id, payload.class_id,
+        payload.occurred_at, payload.incident_type, payload.location_id, payload.class_id,
         payload.child_name, payload.injury_type_id, payload.description,
         payload.id
       ]
@@ -169,42 +198,53 @@ export function registerIpcHandlers(): void {
   })
 
   // ---- 集計 ----
-  ipcMain.handle('db:get-stats', (_e, payload: { dateFrom: string; dateTo: string }) => {
+  ipcMain.handle('db:get-stats', (_e, payload: {
+    dateFrom: string
+    dateTo: string
+    incidentType?: string
+  }) => {
     const db = getDb()
-    const { dateFrom, dateTo } = payload
+    const { dateFrom, dateTo, incidentType } = payload
+    const typeFilter = incidentType ? 'AND incident_type = ?' : ''
+    const typeParam = incidentType ? [incidentType] : []
 
     const timeRows = db.exec(`
       SELECT
-        CAST(strftime('%H', occurred_at) AS INTEGER) AS slot_index,
+        CAST(strftime('%H', occurred_at) AS INTEGER) * 2 +
+        CASE WHEN CAST(strftime('%M', occurred_at) AS INTEGER) >= 30 THEN 1 ELSE 0 END AS slot_index,
         COUNT(*) AS count
       FROM incidents
       WHERE date(occurred_at) >= ? AND date(occurred_at) <= ?
+      ${typeFilter}
       GROUP BY slot_index
       ORDER BY slot_index
-    `, [dateFrom, dateTo])
+    `, [dateFrom, dateTo, ...typeParam])
 
     const injuryRows = db.exec(`
       SELECT it.name, COUNT(*) AS count
       FROM incidents i
       JOIN injury_types it ON it.id = i.injury_type_id
       WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      ${typeFilter}
       GROUP BY it.id
       ORDER BY count DESC
-    `, [dateFrom, dateTo])
+    `, [dateFrom, dateTo, ...typeParam])
 
     const locationRows = db.exec(`
       SELECT l.name, COUNT(*) AS count
       FROM incidents i
       JOIN locations l ON l.id = i.location_id
       WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      ${typeFilter}
       GROUP BY l.id
       ORDER BY count DESC
-    `, [dateFrom, dateTo])
+    `, [dateFrom, dateTo, ...typeParam])
 
     const totalRows = db.exec(`
       SELECT COUNT(*) FROM incidents
       WHERE date(occurred_at) >= ? AND date(occurred_at) <= ?
-    `, [dateFrom, dateTo])
+      ${typeFilter}
+    `, [dateFrom, dateTo, ...typeParam])
 
     const countMap = new Map<number, number>()
     for (const [slotIndex, count] of (timeRows[0]?.values ?? [])) {
@@ -212,11 +252,15 @@ export function registerIpcHandlers(): void {
     }
     const timeSlots: { slot: string; count: number }[] = []
     for (let h = 7; h <= 18; h++) {
-      const hh = String(h).padStart(2, '0')
-      timeSlots.push({
-        slot: `${hh}:00-${hh}:59`,
-        count: countMap.get(h) ?? 0
-      })
+      for (let half = 0; half < 2; half++) {
+        const hh = String(h).padStart(2, '0')
+        const mStart = half === 0 ? '00' : '30'
+        const mEnd   = half === 0 ? '29' : '59'
+        timeSlots.push({
+          slot: `${hh}:${mStart}-${hh}:${mEnd}`,
+          count: countMap.get(h * 2 + half) ?? 0
+        })
+      }
     }
 
     return {
@@ -234,116 +278,34 @@ export function registerIpcHandlers(): void {
   })
 
   // ---- 期間フィルタ付き事案一覧 ----
-  ipcMain.handle('db:get-incidents-filtered', (_e, payload: { dateFrom: string; dateTo: string }) => {
-    const { dateFrom, dateTo } = payload
+  ipcMain.handle('db:get-incidents-filtered', (_e, payload: {
+    dateFrom: string
+    dateTo: string
+    incidentType?: string
+  }) => {
+    const { dateFrom, dateTo, incidentType } = payload
     const rows = getDb().exec(`
-      SELECT i.id, i.occurred_at, l.name, c.name, i.child_name,
+      SELECT i.id, i.occurred_at, i.incident_type, l.name, c.name, i.child_name,
              it.name, i.description
       FROM incidents i
       JOIN locations   l  ON l.id  = i.location_id
       JOIN classes     c  ON c.id  = i.class_id
       JOIN injury_types it ON it.id = i.injury_type_id
       WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
+      ${incidentType ? 'AND i.incident_type = ?' : ''}
       ORDER BY i.occurred_at
-    `, [dateFrom, dateTo])
+    `, incidentType ? [dateFrom, dateTo, incidentType] : [dateFrom, dateTo])
     return rows[0]?.values ?? []
-  })
-
-  // ---- 時間帯クロス集計（場所別・けが種類別） ----
-  ipcMain.handle('db:get-matrix', (_e, payload: { dateFrom: string; dateTo: string }) => {
-    const { dateFrom, dateTo } = payload
-    const db = getDb()
-
-    const locRows = db.exec(`
-      SELECT
-        CAST(strftime('%H', i.occurred_at) AS INTEGER) * 4 +
-        CAST(strftime('%M', i.occurred_at) AS INTEGER) / 15 AS slot_index,
-        l.name AS location_name,
-        COUNT(*) AS count
-      FROM incidents i
-      JOIN locations l ON l.id = i.location_id
-      WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
-      GROUP BY slot_index, location_name
-      ORDER BY slot_index
-    `, [dateFrom, dateTo])
-
-    const injRows = db.exec(`
-      SELECT
-        CAST(strftime('%H', i.occurred_at) AS INTEGER) * 4 +
-        CAST(strftime('%M', i.occurred_at) AS INTEGER) / 15 AS slot_index,
-        it.name AS injury_type_name,
-        COUNT(*) AS count
-      FROM incidents i
-      JOIN injury_types it ON it.id = i.injury_type_id
-      WHERE date(i.occurred_at) >= ? AND date(i.occurred_at) <= ?
-      GROUP BY slot_index, injury_type_name
-      ORDER BY slot_index
-    `, [dateFrom, dateTo])
-
-    const locationMatrix: Record<string, Record<string, number>> = {}
-    const injuryMatrix: Record<string, Record<string, number>> = {}
-
-    // 表示する時間帯スロット（07:00〜18:00、15分刻み）
-    const SLOT_START_H = 7
-    const SLOT_END_H = 18
-    const allSlots: string[] = []
-    for (let h = SLOT_START_H; h <= SLOT_END_H; h++) {
-      for (let m = 0; m < 60; m += 15) {
-        const hh = String(h).padStart(2, '0')
-        allSlots.push(`${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`)
-      }
-    }
-    const slotSet = new Set<string>(allSlots)
-
-    // マスタ全件を列の初期値にする（0件の項目も表示するため）
-    const allLocRows = db.exec('SELECT name FROM locations ORDER BY id')
-    const allInjRows = db.exec('SELECT name FROM injury_types ORDER BY id')
-    const locationSet = new Set<string>(
-      (allLocRows[0]?.values ?? []).map(([name]) => String(name))
-    )
-    const injuryTypeSet = new Set<string>(
-      (allInjRows[0]?.values ?? []).map(([name]) => String(name))
-    )
-
-    for (const [slotIndex, locationName, count] of (locRows[0]?.values ?? [])) {
-      const idx = Number(slotIndex)
-      const h = Math.floor(idx / 4)
-      const m = (idx % 4) * 15
-      const hh = String(h).padStart(2, '0')
-      const slot = `${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`
-      if (!slotSet.has(slot)) continue
-      if (!locationMatrix[slot]) locationMatrix[slot] = {}
-      locationMatrix[slot][String(locationName)] = Number(count)
-    }
-
-    for (const [slotIndex, injuryTypeName, count] of (injRows[0]?.values ?? [])) {
-      const idx = Number(slotIndex)
-      const h = Math.floor(idx / 4)
-      const m = (idx % 4) * 15
-      const hh = String(h).padStart(2, '0')
-      const slot = `${hh}:${String(m).padStart(2, '0')}-${hh}:${String(m + 14).padStart(2, '0')}`
-      if (!slotSet.has(slot)) continue
-      if (!injuryMatrix[slot]) injuryMatrix[slot] = {}
-      injuryMatrix[slot][String(injuryTypeName)] = Number(count)
-    }
-
-    return {
-      slotLabels: Array.from(slotSet).sort(),
-      locations: Array.from(locationSet),
-      injuryTypes: Array.from(injuryTypeSet),
-      locationMatrix,
-      injuryMatrix,
-    }
   })
 
   // ---- PDF生成（テキストベース） ----
   ipcMain.handle('pdf:build', async (_e, payload: {
-    incidents: IncidentRow[]
-    matrix: MatrixData
+    incidentsByType: { type: string; incidents: IncidentRow[] }[]
     periodLabel: string
-    chartImageBytes: number[]
+    chartImagesByType: { type: string; imageBytes: number[] }[]
   }) => {
-    return buildPdfWithTextPages(payload)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return buildPdfWithTextPages(payload as any)
   })
 
   // ---- PDF保存（バッファ受け取り） ----
