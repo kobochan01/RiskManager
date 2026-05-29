@@ -18,8 +18,11 @@ const ALLOWED_CHANNELS = [
   'db:add-location',
   'db:update-location',
   'db:delete-location',
+  'db:get-children',
+  'db:add-child',
+  'db:update-child',
+  'db:delete-child',
   'db:get-stats',
-  'db:get-matrix',
   'pdf:export-save',
   'pdf:build',
 ] as const
