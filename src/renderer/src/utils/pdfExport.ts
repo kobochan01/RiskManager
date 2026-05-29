@@ -6,3 +6,12 @@ export function buildPdfFileName(from: string): string {
   const yyyymm = from.slice(0, 4) + from.slice(5, 7)
   return `report_${yyyymm}.pdf`
 }
+
+const ROWS_PER_PAGE = 30
+
+export function splitIncidentsIntoPages(incidents: IncidentRow[]): IncidentRow[][] {
+  if (incidents.length === 0) return [[]]
+  return Array.from({ length: Math.ceil(incidents.length / ROWS_PER_PAGE) }, (_, i) =>
+    incidents.slice(i * ROWS_PER_PAGE, (i + 1) * ROWS_PER_PAGE)
+  )
+}

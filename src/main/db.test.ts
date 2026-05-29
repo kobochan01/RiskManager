@@ -19,6 +19,7 @@ CREATE TABLE locations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL
 CREATE TABLE incidents (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   occurred_at DATETIME NOT NULL,
+  incident_type TEXT NOT NULL DEFAULT 'ヒヤリハット',
   location_id INTEGER NOT NULL,
   class_id INTEGER NOT NULL,
   child_name TEXT NOT NULL,
@@ -29,6 +30,7 @@ CREATE TABLE incidents (
   FOREIGN KEY (class_id) REFERENCES classes(id),
   FOREIGN KEY (injury_type_id) REFERENCES injury_types(id)
 );
+CREATE TABLE children (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
 `
 
 function createTestDb(): Database {
@@ -38,10 +40,10 @@ function createTestDb(): Database {
   db.run("INSERT INTO classes VALUES (1, '年少'), (2, '年中'), (3, '年長')")
   db.run("INSERT INTO injury_types VALUES (1, '打撲'), (2, '擦り傷')")
   db.run("INSERT INTO locations VALUES (1, '園庭'), (2, '廊下')")
-  db.run(`INSERT INTO incidents (id, occurred_at, location_id, class_id, child_name, injury_type_id, description) VALUES
-    (1, '2026-05-10T09:00', 1, 1, '田中一郎', 1, '転倒して膝を打った'),
-    (2, '2026-05-15T10:30', 2, 2, '鈴木花子', 2, '廊下で滑って擦り傷'),
-    (3, '2026-05-20T14:00', 1, 3, '山田太郎', 1, '遊具から落下')`)
+  db.run(`INSERT INTO incidents (id, occurred_at, incident_type, location_id, class_id, child_name, injury_type_id, description) VALUES
+    (1, '2026-05-10T09:00', 'ヒヤリハット', 1, 1, '田中一郎', 1, '転倒して膝を打った'),
+    (2, '2026-05-15T10:30', 'インシデント', 2, 2, '鈴木花子', 2, '廊下で滑って擦り傷'),
+    (3, '2026-05-20T14:00', 'ヒヤリハット', 1, 3, '山田太郎', 1, '遊具から落下')`)
   return db
 }
 
@@ -51,6 +53,7 @@ function queryIncidents(db: Database, filters: {
   injuryTypeId?: string
   dateFrom?: string
   dateTo?: string
+  incidentType?: string
 } = {}): unknown[][] {
   const conditions: string[] = []
   const params: (string | number)[] = []
@@ -74,9 +77,13 @@ function queryIncidents(db: Database, filters: {
     conditions.push('date(i.occurred_at) <= ?')
     params.push(filters.dateTo)
   }
+  if (filters.incidentType) {
+    conditions.push('i.incident_type = ?')
+    params.push(filters.incidentType)
+  }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const rows = db.exec(`
-    SELECT i.id, i.occurred_at, l.name, c.name, i.child_name, it.name, i.description, i.created_at
+    SELECT i.id, i.occurred_at, i.incident_type, l.name, c.name, i.child_name, it.name, i.description, i.created_at
     FROM incidents i
     JOIN locations l ON l.id = i.location_id
     JOIN classes c ON c.id = i.class_id
@@ -135,21 +142,21 @@ describe('db:get-incidents フィルタリング', () => {
     const db = createTestDb()
     const rows = queryIncidents(db, { keyword: '田中' })
     expect(rows).toHaveLength(1)
-    expect(rows[0][4]).toBe('田中一郎')
+    expect(rows[0][5]).toBe('田中一郎')
   })
 
   it('keyword で description を部分一致検索できる', () => {
     const db = createTestDb()
     const rows = queryIncidents(db, { keyword: '廊下' })
     expect(rows).toHaveLength(1)
-    expect(rows[0][4]).toBe('鈴木花子')
+    expect(rows[0][5]).toBe('鈴木花子')
   })
 
   it('classId で絞り込める', () => {
     const db = createTestDb()
     const rows = queryIncidents(db, { classId: '2' })
     expect(rows).toHaveLength(1)
-    expect(rows[0][3]).toBe('年中')
+    expect(rows[0][4]).toBe('年中')
   })
 
   it('injuryTypeId で絞り込める', () => {
@@ -174,18 +181,38 @@ describe('db:get-incidents フィルタリング', () => {
     const db = createTestDb()
     const rows = queryIncidents(db, { dateFrom: '2026-05-12', dateTo: '2026-05-18' })
     expect(rows).toHaveLength(1)
-    expect(rows[0][4]).toBe('鈴木花子')
+    expect(rows[0][5]).toBe('鈴木花子')
   })
 
   it('スペース区切りの occurred_at でも日付フィルターが機能する', () => {
     const db = createTestDb()
     db.run(
-      `INSERT INTO incidents (occurred_at, location_id, class_id, child_name, injury_type_id, description)
-       VALUES ('2026-05-25 11:00:00', 1, 1, '旧形式太郎', 1, '旧形式データ')`
+      `INSERT INTO incidents (occurred_at, incident_type, location_id, class_id, child_name, injury_type_id, description)
+       VALUES ('2026-05-25 11:00:00', 'ヒヤリハット', 1, 1, '旧形式太郎', 1, '旧形式データ')`
     )
     const rows = queryIncidents(db, { dateFrom: '2026-05-25', dateTo: '2026-05-25' })
     expect(rows).toHaveLength(1)
-    expect(rows[0][4]).toBe('旧形式太郎')
+    expect(rows[0][5]).toBe('旧形式太郎')
+  })
+
+  it('incidentType で種別絞り込みできる（ヒヤリハット: 2件）', () => {
+    const db = createTestDb()
+    const rows = queryIncidents(db, { incidentType: 'ヒヤリハット' })
+    expect(rows).toHaveLength(2)
+    expect(rows.every((r) => r[2] === 'ヒヤリハット')).toBe(true)
+  })
+
+  it('incidentType で種別絞り込みできる（インシデント: 1件）', () => {
+    const db = createTestDb()
+    const rows = queryIncidents(db, { incidentType: 'インシデント' })
+    expect(rows).toHaveLength(1)
+    expect(rows[0][2]).toBe('インシデント')
+  })
+
+  it('incidentType で種別絞り込みできる（アクシデント: 0件）', () => {
+    const db = createTestDb()
+    const rows = queryIncidents(db, { incidentType: 'アクシデント' })
+    expect(rows).toHaveLength(0)
   })
 })
 
@@ -295,5 +322,53 @@ describe('occurred_at 正規化（openEdit 内の処理）', () => {
   it('T 区切りの日時はそのまま16文字にスライスされる', () => {
     const raw = '2026-05-23T09:30'
     expect(raw.replace(' ', 'T').slice(0, 16)).toBe('2026-05-23T09:30')
+  })
+})
+
+describe('children テーブル CRUD', () => {
+  function createChildrenDb(): Database {
+    const db = new SQL.Database()
+    db.run('CREATE TABLE children (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE)')
+    return db
+  }
+
+  it('追加: 園児名を登録できる', () => {
+    const db = createChildrenDb()
+    db.run("INSERT INTO children (name) VALUES ('田中太郎')")
+    const rows = db.exec('SELECT name FROM children')[0]?.values
+    expect(rows).toHaveLength(1)
+    expect(rows[0][0]).toBe('田中太郎')
+  })
+
+  it('一覧: 登録した園児名を全件取得できる', () => {
+    const db = createChildrenDb()
+    db.run("INSERT INTO children (name) VALUES ('田中太郎'), ('鈴木花子'), ('山田次郎')")
+    const rows = db.exec('SELECT id, name FROM children ORDER BY id')[0]?.values
+    expect(rows).toHaveLength(3)
+  })
+
+  it('更新: 園児名を変更できる', () => {
+    const db = createChildrenDb()
+    db.run("INSERT INTO children (name) VALUES ('田中太郎')")
+    const id = db.exec('SELECT id FROM children')[0].values[0][0]
+    db.run('UPDATE children SET name = ? WHERE id = ?', ['田中一郎', id])
+    const rows = db.exec('SELECT name FROM children')[0]?.values
+    expect(rows[0][0]).toBe('田中一郎')
+  })
+
+  it('削除: 指定した園児名を削除できる', () => {
+    const db = createChildrenDb()
+    db.run("INSERT INTO children (name) VALUES ('田中太郎'), ('鈴木花子')")
+    const id = db.exec("SELECT id FROM children WHERE name = '田中太郎'")[0].values[0][0]
+    db.run('DELETE FROM children WHERE id = ?', [id])
+    const rows = db.exec('SELECT name FROM children')[0]?.values
+    expect(rows).toHaveLength(1)
+    expect(rows[0][0]).toBe('鈴木花子')
+  })
+
+  it('UNIQUE制約: 同じ名前を二重登録すると例外が発生する', () => {
+    const db = createChildrenDb()
+    db.run("INSERT INTO children (name) VALUES ('田中太郎')")
+    expect(() => db.run("INSERT INTO children (name) VALUES ('田中太郎')")).toThrow()
   })
 })
