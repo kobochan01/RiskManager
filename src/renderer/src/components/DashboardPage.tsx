@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createRoot } from 'react-dom/client'
+import { createRoot, flushSync } from 'react-dom/client'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -109,13 +109,13 @@ export default function DashboardPage(): JSX.Element {
         }))
       )
 
-      // 種別ごとにグラフをキャプチャ（key を使わず props 更新で ref を安定させる）
+      // 種別ごとにグラフをキャプチャ（flushSync で同期レンダリングを保証）
       root = createRoot(container)
       const chartImagesByType: { type: string; imageBytes: number[] }[] = []
       let pdfContainerHandle: PdfContainerHandle | null = null
 
       for (const { type, stats: typeStats } of statsByType) {
-        await new Promise<void>((resolve) => {
+        flushSync(() => {
           root!.render(
             <PdfContainer
               ref={(handle) => { pdfContainerHandle = handle }}
@@ -123,16 +123,19 @@ export default function DashboardPage(): JSX.Element {
               title={type}
             />
           )
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
         })
+        // Recharts SVG の描画完了を待つ
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+
         const chartElement = pdfContainerHandle?.getChartElement() ?? null
         if (!chartElement) {
-          throw new Error(`グラフ要素が取得できませんでした: ${type}`)
+          throw new Error(`グラフ要素が取得できませんでした（${type}）。コンポーネントの ref が未設定です。`)
         }
         const canvas = await html2canvas(chartElement, {
           scale: 2, useCORS: true, backgroundColor: '#ffffff',
         })
-        const blob = await new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), 'image/png'))
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), 'image/png'))
+        if (!blob) throw new Error(`画像の生成に失敗しました（${type}）`)
         chartImagesByType.push({
           type,
           imageBytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
