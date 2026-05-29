@@ -90,25 +90,25 @@ export default function DashboardPage(): JSX.Element {
     try {
       const { from: dateFrom, to: dateTo } = getPeriodRange(period, selectedYear, selectedMonth, selectedQuarter)
 
-      // 種別ごとの一覧データを並列取得
-      const incidentsByType = await Promise.all(
-        INCIDENT_TYPES.map(async (type) => ({
-          type,
-          incidents: await window.api.invoke('db:get-incidents-filtered', {
-            dateFrom, dateTo, incidentType: type,
-          }) as IncidentRow[],
-        }))
-      )
-
-      // 種別ごとの統計データを並列取得（グラフ用）
-      const statsByType = await Promise.all(
-        INCIDENT_TYPES.map(async (type) => ({
-          type,
-          stats: await window.api.invoke('db:get-stats', {
-            dateFrom, dateTo, incidentType: type,
-          }) as Stats,
-        }))
-      )
+      // 種別ごとの一覧・統計データをIPC 6件すべて並列取得
+      const [incidentsByType, statsByType] = await Promise.all([
+        Promise.all(
+          INCIDENT_TYPES.map(async (type) => ({
+            type,
+            incidents: await window.api.invoke('db:get-incidents-filtered', {
+              dateFrom, dateTo, incidentType: type,
+            }) as IncidentRow[],
+          }))
+        ),
+        Promise.all(
+          INCIDENT_TYPES.map(async (type) => ({
+            type,
+            stats: await window.api.invoke('db:get-stats', {
+              dateFrom, dateTo, incidentType: type,
+            }) as Stats,
+          }))
+        ),
+      ])
 
       // 種別ごとにグラフをキャプチャ（flushSync で同期レンダリングを保証）
       root = createRoot(container)
