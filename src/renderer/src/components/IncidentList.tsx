@@ -8,11 +8,12 @@ function formatOccurredAt(raw: string): string {
 }
 
 type MasterItem = [number, string]
-type IncidentRow = [number, string, string, string, string, string, string, string]
-// [id, occurred_at, location_name, class_name, child_name, injury_type_name, description, created_at]
+// [id, occurred_at, incident_type, location_name, class_name, child_name, injury_type_name, description, created_at]
+type IncidentRow = [number, string, string, string, string, string, string, string, string]
 
 type Filters = {
   keyword: string
+  incidentType: string
   classId: string
   injuryTypeId: string
   dateFrom: string
@@ -22,12 +23,15 @@ type Filters = {
 type EditTarget = {
   id: number
   occurred_at: string
+  incident_type: string
   location_id: number
   class_id: number
   child_name: string
   injury_type_id: number
   description: string
 }
+
+const INCIDENT_TYPES = ['ヒヤリハット', 'インシデント', 'アクシデント']
 
 export default function IncidentList(): JSX.Element {
   const [rows, setRows] = useState<IncidentRow[]>([])
@@ -36,6 +40,7 @@ export default function IncidentList(): JSX.Element {
   const [injuryTypes, setInjuryTypes] = useState<MasterItem[]>([])
   const [filters, setFilters] = useState<Filters>({
     keyword: '',
+    incidentType: '',
     classId: '',
     injuryTypeId: '',
     dateFrom: '',
@@ -57,7 +62,14 @@ export default function IncidentList(): JSX.Element {
   }
 
   async function loadIncidents(currentFilters: Filters): Promise<void> {
-    const incidents = await window.api.invoke('db:get-incidents', currentFilters)
+    const incidents = await window.api.invoke('db:get-incidents', {
+      keyword: currentFilters.keyword || undefined,
+      incidentType: currentFilters.incidentType || undefined,
+      classId: currentFilters.classId || undefined,
+      injuryTypeId: currentFilters.injuryTypeId || undefined,
+      dateFrom: currentFilters.dateFrom || undefined,
+      dateTo: currentFilters.dateTo || undefined,
+    })
     setRows(incidents as IncidentRow[])
   }
 
@@ -65,20 +77,20 @@ export default function IncidentList(): JSX.Element {
   useEffect(() => { loadIncidents(filters) }, [filters])
 
   const resetFilters = (): void => {
-    setFilters({ keyword: '', classId: '', injuryTypeId: '', dateFrom: '', dateTo: '' })
+    setFilters({ keyword: '', incidentType: '', classId: '', injuryTypeId: '', dateFrom: '', dateTo: '' })
   }
 
   const hasFilter = Object.values(filters).some(Boolean)
 
   function openEdit(row: IncidentRow): void {
-    const [id, occurred_at, locationName, className, , injuryTypeName, description] = row
-    const childName = row[4]
+    const [id, occurred_at, incident_type, locationName, className, childName, injuryTypeName, description] = row
     const loc = locations.find(([, n]) => n === locationName)
     const cls = classes.find(([, n]) => n === className)
     const inj = injuryTypes.find(([, n]) => n === injuryTypeName)
     setEditTarget({
       id,
       occurred_at: occurred_at.replace(' ', 'T').slice(0, 16),
+      incident_type,
       location_id: loc?.[0] ?? 0,
       class_id: cls?.[0] ?? 0,
       child_name: childName,
@@ -91,9 +103,10 @@ export default function IncidentList(): JSX.Element {
   async function handleSave(): Promise<void> {
     if (!editTarget) return
     if (
-      !editTarget.occurred_at || editTarget.location_id === 0 ||
-      editTarget.class_id === 0 || !editTarget.child_name ||
-      editTarget.injury_type_id === 0 || !editTarget.description
+      !editTarget.occurred_at || !editTarget.incident_type ||
+      editTarget.location_id === 0 || editTarget.class_id === 0 ||
+      !editTarget.child_name || editTarget.injury_type_id === 0 ||
+      !editTarget.description
     ) {
       setEditError('すべての項目を入力してください')
       return
@@ -135,6 +148,19 @@ export default function IncidentList(): JSX.Element {
               placeholder="例: 山田"
               className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">種別</label>
+            <select
+              value={filters.incidentType}
+              onChange={(e) => setFilters((f) => ({ ...f, incidentType: e.target.value }))}
+              className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">すべて</option>
+              {INCIDENT_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">クラス</label>
@@ -209,6 +235,7 @@ export default function IncidentList(): JSX.Element {
             <thead className="bg-gray-50 text-xs font-medium text-gray-600 uppercase">
               <tr>
                 <th className="px-3 py-2 text-left w-36">発生日時</th>
+                <th className="px-3 py-2 text-left w-24">種別</th>
                 <th className="px-3 py-2 text-left w-24">場所</th>
                 <th className="px-3 py-2 text-left w-20">クラス</th>
                 <th className="px-3 py-2 text-left w-24">園児名</th>
@@ -219,7 +246,7 @@ export default function IncidentList(): JSX.Element {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((r) => {
-                const [id, occurredAt, locationName, className, childName, injuryTypeName, description] = r
+                const [id, occurredAt, incidentType, locationName, className, childName, injuryTypeName, description] = r
                 const isExpanded = expandedId === id
                 const shortDesc = description.length > 50 ? description.slice(0, 50) + '…' : description
                 return (
@@ -229,6 +256,7 @@ export default function IncidentList(): JSX.Element {
                       className="cursor-pointer hover:bg-blue-50 transition-colors"
                     >
                       <td className="px-3 py-2 text-gray-700">{formatOccurredAt(occurredAt)}</td>
+                      <td className="px-3 py-2 text-gray-700">{incidentType}</td>
                       <td className="px-3 py-2 text-gray-700">{locationName}</td>
                       <td className="px-3 py-2 text-gray-700">{className}</td>
                       <td className="px-3 py-2 text-gray-700">{childName}</td>
@@ -253,7 +281,7 @@ export default function IncidentList(): JSX.Element {
                     </tr>
                     {isExpanded && (
                       <tr className="bg-blue-50">
-                        <td colSpan={7} className="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap">
+                        <td colSpan={8} className="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap">
                           <span className="font-medium text-gray-500 text-xs mr-2">内容:</span>
                           {description}
                         </td>
@@ -273,6 +301,20 @@ export default function IncidentList(): JSX.Element {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
             <h3 className="text-base font-bold text-gray-800 mb-4">報告を編集</h3>
             <div className="space-y-4">
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">種別</label>
+                <select
+                  value={editTarget.incident_type}
+                  onChange={(e) => setEditTarget((t) => t && { ...t, incident_type: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="">-- 選択してください --</option>
+                  {INCIDENT_TYPES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">発生日時</label>
