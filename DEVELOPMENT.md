@@ -55,6 +55,7 @@
 | 29 | [#70](https://github.com/kobochan01/RiskManager/issues/70) | Phase1 DB層・IPCハンドラー・preload の基盤整備（3種別対応・園児名マスタ） | ✅ 完了 |
 | 30 | [#72](https://github.com/kobochan01/RiskManager/issues/72) | Phase2 pdfBuilder・PDFグラフ 3種別対応（IncidentRow 8列・種別別グラフページ） | ✅ 完了 |
 | 31 | [#74](https://github.com/kobochan01/RiskManager/issues/74) | Phase3 マスタ管理に園児名タブ追加・報告入力フォームに種別フィールド追加 | ✅ 完了 |
+| 32 | [#76](https://github.com/kobochan01/RiskManager/issues/76) | Phase4 報告一覧・ダッシュボードに種別フィルター追加・PDF出力フロー再設計 | ✅ 完了 |
 
 ---
 
@@ -218,6 +219,7 @@ CREATE TABLE settings (
 | `feature/70-phase1-db-ipc-preload` | [#71](https://github.com/kobochan01/RiskManager/pull/71) | Phase1 DB層・IPC・preload 3種別対応・園児名マスタ追加 | ✅ マージ済み |
 | `feature/72-phase2-pdf-builder` | [#73](https://github.com/kobochan01/RiskManager/pull/73) | Phase2 pdfBuilder・PDFグラフ 3種別対応 | ✅ マージ済み |
 | `feature/74-phase3-master-form` | [#75](https://github.com/kobochan01/RiskManager/pull/75) | Phase3 マスタ管理に園児名タブ追加・報告入力フォームに種別フィールド追加 | ✅ マージ済み |
+| `feature/76-phase4-list-dashboard` | [#77](https://github.com/kobochan01/RiskManager/pull/77) | Phase4 報告一覧・ダッシュボードに種別フィルター追加・PDF出力フロー再設計 | ✅ マージ済み |
 
 ---
 
@@ -550,3 +552,29 @@ CREATE TABLE settings (
 - **園児名のマスタ化**: localStorage 履歴方式をやめ、Phase 1 で追加した `children` テーブルから選択する方式に統一。既存の `incidents.child_name` はフリーテキストのまま維持し、外部キー制約なし
 - **種別フィールドの配置**: フォームの先頭に配置。種別が最初に確定することで、以降の入力（けがの種類など）の文脈が明確になる
 - **既存レコードとの互換性**: `incident_type` は Phase 1 の DB マイグレーションで `DEFAULT 'ヒヤリハット'` 済みのため、既存データの扱いは変わらない
+
+---
+
+## Issue #76 作業記録（2026-05-29）
+
+### やったこと
+
+- `src/renderer/src/components/IncidentList.tsx` を更新
+  - `IncidentRow` を 8 列 → 9 列に変更（2列目に `incident_type` を追加）
+  - `Filters` 型と初期状態に `incidentType` を追加
+  - フィルターパネルに「種別」セレクトボックスを追加（フリーワードとクラスの間）
+  - テーブルヘッダーと行に「種別」列を追加
+  - 編集モーダルの先頭に種別セレクトを追加（`openEdit` で `incident_type` を `EditTarget` にセット、`handleSave` のバリデーションにも追加）
+- `src/renderer/src/components/DashboardPage.tsx` を更新
+  - `incidentTypeFilter` state と種別ドロップダウン（全て / ヒヤリハット / インシデント / アクシデント）を追加
+  - `db:get-stats` 呼び出しに `incidentType` を渡すよう変更
+  - 時間帯グラフラベルを「1時間ごと」→「30分ごと」に変更・`maxBarSize` を 10 に縮小
+  - `handleExportPdf` を種別3ループ方式に再設計（`db:get-matrix` 呼び出しを廃止）
+  - `flushSync`（`react-dom`）でグラフレンダリングを同期化して ref 取得を確実に行う
+- `src/renderer/src/utils/pdfExport.ts` から不要な `buildPdfDocument` 関数と `MatrixData` 型を削除
+
+### 技術的な決定事項
+
+- **PDF出力フロー**: 種別ごとに `db:get-incidents-filtered` と `db:get-stats` を並列取得し、`flushSync` で `PdfContainer` を同期レンダリングして html2canvas でキャプチャ。3種別分の画像データを `pdf:build` に渡す
+- **`flushSync` のインポート元**: `react-dom/client` には `flushSync` がエクスポートされておらず実行時エラーになるため、`react-dom` から直接インポートする必要がある（TypeScript の型チェックはパスしていたが実行時にエラーとなる落とし穴）
+- **key なし再レンダリング**: ループ内で `key={type}` を使うと React がアンマウント→マウントを繰り返し、ref コールバックが一時的に `null` になるタイミング問題が発生する。`key` を省略することで同じコンポーネントインスタンスの props を更新し、ref を安定させた
