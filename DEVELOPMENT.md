@@ -52,6 +52,7 @@
 | 26 | [#60](https://github.com/kobochan01/RiskManager/issues/60) | P4コード品質改善（buildPdfFileName明示化・タブ条件付きレンダリング化） | ✅ 完了 |
 | 27 | [#64](https://github.com/kobochan01/RiskManager/issues/64) | インシデント登録が失敗する2つのバグを修正（occurredAt未定義・DBマイグレーション不備） | ✅ 完了 |
 | 28 | [#68](https://github.com/kobochan01/RiskManager/issues/68) | 園児名入力をフリーワード履歴のプルダウン選択方式に変更する | ✅ 完了 |
+| 29 | [#70](https://github.com/kobochan01/RiskManager/issues/70) | Phase1 DB層・IPCハンドラー・preload の基盤整備（3種別対応・園児名マスタ） | ✅ 完了 |
 
 ---
 
