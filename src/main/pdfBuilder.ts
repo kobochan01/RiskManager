@@ -10,8 +10,13 @@ export type IncidentRow = [number, string, string, string, string, string, strin
 //                         id    occ   type  loc   cls   child  inj   desc
 
 function loadFontBase64(): string {
-  const buf = readFileSync('C:\\Windows\\Fonts\\NotoSansJP-VF.ttf')
-  return buf.toString('base64')
+  const fontPath = 'C:\\Windows\\Fonts\\NotoSansJP-VF.ttf'
+  try {
+    const buf = readFileSync(fontPath)
+    return buf.toString('base64')
+  } catch {
+    throw new Error(`フォントファイルが見つかりません: ${fontPath}`)
+  }
 }
 
 function makeDoc(fontBase64: string): jsPDF {

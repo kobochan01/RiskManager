@@ -154,9 +154,9 @@ export default function DashboardPage(): JSX.Element {
     } catch (err) {
       window.alert(`PDF生成に失敗しました:\n${err instanceof Error ? err.message : String(err)}`)
     } finally {
+      setExporting(false)
       root?.unmount()
       document.body.removeChild(container)
-      setExporting(false)
     }
   }
 
