@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { createRoot, flushSync } from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
+import { flushSync } from 'react-dom'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
