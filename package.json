@@ -1,6 +1,6 @@
 {
   "name": "risk-manager",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "保育園向けヒヤリハット事案管理アプリ",
   "main": "out/main/index.js",
   "scripts": {
