@@ -65,6 +65,7 @@
 | 39 | [#95](https://github.com/kobochan01/RiskManager/issues/95) | P3 保守性改善 - INCIDENT_TYPES 定数一元化・ROWS_PER_PAGE ファイルスコープ化 | ✅ 完了 |
 | 40 | [#98](https://github.com/kobochan01/RiskManager/issues/98) | README 刷新（開発経緯・操作説明・インストール手順） | ✅ 完了 |
 | 41 | [#100](https://github.com/kobochan01/RiskManager/issues/100) | GitHub Releases への自動リリース設定・v1.0.0 初回リリース | ✅ 完了 |
+| 42 | [#102](https://github.com/kobochan01/RiskManager/issues/102) | Mac向けDMGビルドをリリースに追加・v1.1.0リリース | ✅ 完了 |
 
 ---
 
@@ -238,6 +239,7 @@ CREATE TABLE settings (
 | `chore/95-deduplicate-incident-types-rows-per-page` | [#96](https://github.com/kobochan01/RiskManager/pull/96) | P3 保守性改善 - INCIDENT_TYPES 定数一元化・ROWS_PER_PAGE ファイルスコープ化 | ✅ マージ済み |
 | `docs/98-rewrite-readme` | [#99](https://github.com/kobochan01/RiskManager/pull/99) | README 刷新（開発経緯・操作説明・インストール手順） | ✅ マージ済み |
 | `chore/100-github-release-setup` | [#101](https://github.com/kobochan01/RiskManager/pull/101) | GitHub Releases 自動リリース設定・v1.0.0 初回リリース | ✅ マージ済み |
+| `feature/102-mac-dmg-release` | [#103](https://github.com/kobochan01/RiskManager/pull/103) | Mac向けDMGビルドをリリースに追加・v1.1.0リリース | ✅ マージ済み |
 
 ---
 
