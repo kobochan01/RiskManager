@@ -1,7 +1,7 @@
 # RiskManager
 
 ![Version](https://img.shields.io/badge/version-1.1.0-blue)
-![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20macOS-lightgrey)
 ![Offline](https://img.shields.io/badge/動作-オフライン-green)
 
 保育園向けヒヤリハット事案管理デスクトップアプリケーション。
@@ -25,9 +25,9 @@
 | 項目 | 内容 |
 |------|------|
 | 対象ユーザー | 保育園の先生・管理者 |
-| 動作環境 | Windows 10 / 11 64bit |
+| 動作環境 | Windows 10 / 11 64bit、macOS 12 以降 |
 | ネットワーク | インターネット接続不要（完全オフライン動作） |
-| データ保存先 | ローカル PC 内（`%APPDATA%\risk-manager\`） |
+| データ保存先 | Windows: `%APPDATA%\risk-manager\` / macOS: `~/Library/Application Support/risk-manager/` |
 
 ### 主な機能
 
@@ -41,9 +41,19 @@
 
 ## インストール
 
-1. [GitHub Releases](https://github.com/kobochan01/RiskManager/releases) から `RiskManager Setup 0.1.0.exe` をダウンロード
+[GitHub Releases](https://github.com/kobochan01/RiskManager/releases) から最新版をダウンロードしてください。
+
+### Windows
+
+1. `RiskManager.Setup.1.1.0.exe` をダウンロード
 2. ダウンロードした exe ファイルをダブルクリックして実行
 3. インストールが完了するとデスクトップにショートカットが作成されます
+
+### macOS
+
+1. `RiskManager-1.1.0-arm64.dmg` をダウンロード
+2. DMG を開き、RiskManager アイコンを「アプリケーション」フォルダへドラッグ
+3. 初回起動時に「開発元を確認できない」と表示された場合は、**右クリック →「開く」→「開く」** をクリック
 
 ---
 
@@ -102,8 +112,8 @@
 
 ### 前提条件
 
-- Node.js 18 以上
-- Windows 環境（`npm run dev` スクリプトが cmd 構文を使用）
+- Node.js 20 以上
+- Windows 環境を推奨（`npm run dev` スクリプトが cmd 構文を使用。macOS では `npx electron-vite dev` で代替可能）
 
 ### 起動手順
 
@@ -121,6 +131,7 @@ npm run dev
 npm test                       # テスト実行（Vitest）
 npm run build                  # プロダクションビルド
 npx electron-builder --win     # Windows インストーラー生成（dist/ に出力）
+npx electron-builder --mac     # macOS DMG 生成（dist/ に出力、Mac 環境のみ）
 ```
 
 ### テスト用シードデータ
@@ -144,7 +155,7 @@ node scripts/seed.cjs
 | ビルドツール | electron-vite 2.3 |
 | スタイル | TailwindCSS 3 |
 | データベース | sql.js 1.12（WebAssembly 版 SQLite） |
-| パッケージング | electron-builder 25（Windows NSIS） |
+| パッケージング | electron-builder 25（Windows NSIS / macOS DMG） |
 
 ---
 
