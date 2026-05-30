@@ -10,6 +10,7 @@ export type IncidentRow = [number, string, string, string, string, string, strin
 //                         id    occ   type  loc   cls   child  inj   desc
 
 let cachedFont: string | null = null
+const ROWS_PER_PAGE = 30
 
 function loadFontBase64(): string {
   if (cachedFont !== null) return cachedFont
@@ -73,7 +74,6 @@ function buildIncidentPages(
   isFirstPage: boolean,
   typeSuffix?: string,
 ): void {
-  const ROWS_PER_PAGE = 30
   const pages: IncidentRow[][] = incidents.length === 0
     ? [[]]
     : Array.from({ length: Math.ceil(incidents.length / ROWS_PER_PAGE) }, (_, i) =>
@@ -140,7 +140,7 @@ export async function buildPdfWithTextPages(payload: {
 
   let totalPages = 0
   for (const { incidents } of incidentsByType) {
-    totalPages += incidents.length === 0 ? 1 : Math.ceil(incidents.length / 30)
+    totalPages += incidents.length === 0 ? 1 : Math.ceil(incidents.length / ROWS_PER_PAGE)
   }
   totalPages += chartImagesByType.length
 
@@ -149,7 +149,7 @@ export async function buildPdfWithTextPages(payload: {
 
   for (const { type, incidents } of incidentsByType) {
     buildIncidentPages(doc, incidents, periodLabel, currentPage, totalPages, isFirstPage, type)
-    const pageCount = incidents.length === 0 ? 1 : Math.ceil(incidents.length / 30)
+    const pageCount = incidents.length === 0 ? 1 : Math.ceil(incidents.length / ROWS_PER_PAGE)
     currentPage += pageCount
     isFirstPage = false
   }

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
+import { INCIDENT_TYPES } from '../constants'
 
 function formatOccurredAt(raw: string): string {
   const d = new Date(raw.replace(' ', 'T'))
@@ -31,7 +32,6 @@ type EditTarget = {
   description: string
 }
 
-const INCIDENT_TYPES = ['ヒヤリハット', 'インシデント', 'アクシデント']
 
 export default function IncidentList(): JSX.Element {
   const [rows, setRows] = useState<IncidentRow[]>([])
