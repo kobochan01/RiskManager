@@ -1,6 +1,6 @@
 # RiskManager
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.1-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20macOS-lightgrey)
 ![Offline](https://img.shields.io/badge/動作-オフライン-green)
 
@@ -45,13 +45,13 @@
 
 ### Windows
 
-1. `RiskManager.Setup.1.1.0.exe` をダウンロード
+1. `RiskManager.Setup.1.1.1.exe` をダウンロード
 2. ダウンロードした exe ファイルをダブルクリックして実行
 3. インストールが完了するとデスクトップにショートカットが作成されます
 
 ### macOS
 
-1. `RiskManager-1.1.0-mac.dmg` をダウンロード
+1. `RiskManager-1.1.1-mac.dmg` をダウンロード
 2. DMG を開き、RiskManager アイコンを「アプリケーション」フォルダへドラッグ
 3. 初回起動時に「開発元を確認できない」と表示された場合は、**右クリック →「開く」→「開く」** をクリック
 
