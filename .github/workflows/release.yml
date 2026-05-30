@@ -63,8 +63,24 @@ jobs:
       - name: Build (electron-vite)
         run: npm run build
 
-      - name: Package (electron-builder)
-        run: npx electron-builder --mac --publish never
+      - name: Build app directory (electron-builder)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder --mac --dir
+
+      - name: Ad-hoc sign the app
+        run: |
+          APP=$(find dist -name "*.app" -maxdepth 3 | head -1)
+          codesign --deep --force --sign - "$APP"
+
+      - name: Create DMG
+        run: |
+          APP=$(find dist -name "*.app" -maxdepth 3 | head -1)
+          VERSION=$(node -p "require('./package.json').version")
+          hdiutil create -volname "RiskManager" \
+            -srcfolder "$APP" \
+            -ov -format UDZO \
+            "dist/RiskManager-${VERSION}-mac.dmg"
 
       - name: Upload macOS DMG to Release
         env:
