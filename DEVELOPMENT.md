@@ -66,6 +66,7 @@
 | 40 | [#98](https://github.com/kobochan01/RiskManager/issues/98) | README 刷新（開発経緯・操作説明・インストール手順） | ✅ 完了 |
 | 41 | [#100](https://github.com/kobochan01/RiskManager/issues/100) | GitHub Releases への自動リリース設定・v1.0.0 初回リリース | ✅ 完了 |
 | 42 | [#102](https://github.com/kobochan01/RiskManager/issues/102) | Mac向けDMGビルドをリリースに追加・v1.1.0リリース | ✅ 完了 |
+| 43 | [#104](https://github.com/kobochan01/RiskManager/issues/104) | Mac DMG「壊れているため開けません」エラーをアドホック署名で解消する | ✅ 完了 |
 
 ---
 
