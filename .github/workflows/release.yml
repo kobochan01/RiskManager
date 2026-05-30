@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  release-windows:
     runs-on: windows-latest
 
     steps:
@@ -32,7 +32,7 @@ jobs:
       - name: Package (electron-builder)
         run: npx electron-builder --win --publish never
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release & Upload Windows installer
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
@@ -41,3 +41,34 @@ jobs:
           gh release create "${{ github.ref_name }}" $exe `
             --title "RiskManager ${{ github.ref_name }}" `
             --generate-notes
+
+  release-mac:
+    runs-on: macos-latest
+    needs: release-windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build (electron-vite)
+        run: npm run build
+
+      - name: Package (electron-builder)
+        run: npx electron-builder --mac --publish never
+
+      - name: Upload macOS DMG to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dmg=$(find dist -name "*.dmg" | head -1)
+          gh release upload "${{ github.ref_name }}" "$dmg"
