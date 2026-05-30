@@ -1,6 +1,6 @@
 # RiskManager
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 ![Offline](https://img.shields.io/badge/動作-オフライン-green)
 
