@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { INCIDENT_TYPES } from '../constants'
 import { createRoot } from 'react-dom/client'
 import { flushSync } from 'react-dom'
 import {
@@ -21,7 +22,6 @@ type Stats = {
 }
 
 const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
-const INCIDENT_TYPES = ['ヒヤリハット', 'インシデント', 'アクシデント']
 
 function SlotTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
   const parts = (payload?.value ?? '').split('-')

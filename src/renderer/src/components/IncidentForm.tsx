@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { INCIDENT_TYPES } from '../constants'
 
 type MasterItem = [number, string]
 
@@ -154,9 +155,9 @@ export default function IncidentForm(): JSX.Element {
             onChange={(e) => setIncidentType(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
-            <option value="ヒヤリハット">ヒヤリハット</option>
-            <option value="インシデント">インシデント</option>
-            <option value="アクシデント">アクシデント</option>
+            {INCIDENT_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
           </select>
         </div>
 
