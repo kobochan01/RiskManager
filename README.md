@@ -149,7 +149,7 @@ npx electron-builder --mac     # macOS DMG 生成（dist/ に出力、Mac 環境
 開発・動作確認用に 100 件のサンプルデータを投入できます。
 
 ```bash
-node scripts/seed.cjs
+node scripts/seed.mjs
 ```
 
 > **注意**: 実行すると既存の `incidents` テーブルが全件削除されてからシードデータが挿入されます。本番データのある環境では実行しないでください。
